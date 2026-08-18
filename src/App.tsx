@@ -5,6 +5,7 @@ import { Sales } from './screens/Sales';
 import { Receipts } from './screens/Receipts';
 import { CardsIcon, ShowIcon, SalesIcon, ReceiptsIcon } from './components/Icons';
 import { useStore } from './lib/store';
+import { SyncBar } from './components/SyncBar';
 
 export type Route = 'cards' | 'show' | 'sales' | 'receipts';
 
@@ -46,6 +47,7 @@ export function App() {
   return (
     <>
       <main className="app">
+        <SyncBar />
         {route === 'cards' && <Cards />}
         {route === 'show' && <Show go={go} />}
         {route === 'sales' && <Sales go={go} />}

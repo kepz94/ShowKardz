@@ -10,6 +10,7 @@ import type { Card, DB, Deal, DealLine, ExpenseCategory, Receipt, Stack } from '
 import { isDuplicate } from './numbers';
 import { splitByWeight, sumAsks } from './money';
 import { composeTitle } from './title';
+import { mergeDb } from './sync/merge-db';
 
 export type Action =
   | { type: 'stack/add'; id: string; year: string; product: string; parallel: string; now: string }
@@ -19,12 +20,17 @@ export type Action =
   | { type: 'receipt/add'; id: string; amountCents: number; category: ExpenseCategory; note: string; photoId?: string; now: string }
   | { type: 'receipt/delete'; id: string; now: string }
   | { type: 'deal/record'; id: string; cardIds: string[]; agreedCents: number; now: string }
-  | { type: 'db/replace'; db: DB };
+  | { type: 'db/replace'; db: DB }
+  /** Records arriving from another device, reconciled by the sync rules. */
+  | { type: 'db/merge'; db: DB };
 
 export function reducer(db: DB, action: Action): DB {
   switch (action.type) {
     case 'db/replace':
       return action.db;
+
+    case 'db/merge':
+      return mergeDb(db, action.db);
 
     case 'stack/add': {
       const stack: Stack = {

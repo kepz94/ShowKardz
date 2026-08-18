@@ -83,8 +83,16 @@ Not yet designed: the trade screen (two dials, who owes cash) and close-out.
 
 ## Stack
 
-React + TypeScript PWA, built with Vite. Firebase Auth + Firestore is the intended
-record of truth; it is not wired yet.
+React + TypeScript PWA, built with Vite. Firebase Auth (Google) + Firestore, with
+offline persistence and queued writes.
+
+Sync is an enhancement, never a requirement: the app runs fully signed out, from
+`localStorage`. Signing in merges this device's records with the account's and
+keeps them in step. The Firebase SDK is loaded after first paint so it never sits
+in the critical path.
+
+**Publishing `firestore.rules` is a separate step from deploying the app.** It does
+not ride the GitHub Pages build — Firebase console → Firestore Database → Rules → Publish.
 
 Both invariants are enforced and covered by tests from day one:
 
@@ -97,9 +105,9 @@ Both invariants are enforced and covered by tests from day one:
 
 ## Known gaps
 
-- **No Firestore.** Records live in `localStorage` on the one device. The swap lands
-  in `src/lib/store.tsx` and nowhere else; `mergeCard` is already written for it.
-  Until then the SRD's "local is a cache, never the record" is inverted.
+- **Sync is unverified on a real device.** The merge and change-detection rules are
+  covered by tests, but two phones actually reconciling has not been observed —
+  that pass is owed.
 - **No camera read.** Sticker number and player name are typed. The one-shot camera
   read described in the SRD is not built.
 - **Cash sales only.** The trade screen (two dials, who owes cash) is neither

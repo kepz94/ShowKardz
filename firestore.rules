@@ -1,0 +1,75 @@
+rules_version = '2';
+
+// SHOWKARDZ — every record belongs to exactly one account.
+//
+// These rules are the ONLY gate. The client is a convenience: anyone can call
+// the API directly with the public config, so nothing here may depend on the
+// app behaving well.
+//
+// Publishing is a SEPARATE step from deploying the app — it does not ride the
+// GitHub Pages build. Firebase console → Firestore Database → Rules → Publish.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // A signed-in user reaches their own records and nothing else. There is no
+    // sharing in this product — it is single-player by design — so there is no
+    // rule granting anyone read access to another account.
+    match /users/{userId}/{collection}/{docId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+
+      allow create, update: if request.auth != null
+        && request.auth.uid == userId
+        && isKnownCollection(collection)
+        && validRecord(collection, request.resource.data);
+
+      // Records are tombstoned, never removed — a hard delete is
+      // indistinguishable from "not synced yet" and resurrects on the next pull.
+      allow delete: if false;
+    }
+
+    // Anything not matched above is denied. Do not add a wildcard match with a
+    // blanket allow: Firestore rules are a permissive UNION, so a broad rule
+    // silently re-grants exactly what a narrow one refuses.
+
+    function isKnownCollection(name) {
+      return name in ['stacks', 'cards', 'deals', 'receipts'];
+    }
+
+    function validRecord(collection, data) {
+      return data.id is string
+        && data.id.size() > 0
+        && data.id == docId
+        && (collection != 'cards' || validCard(data))
+        && (collection != 'receipts' || validReceipt(data))
+        && (collection != 'deals' || validDeal(data));
+    }
+
+    function validCard(data) {
+      return data.number is string
+        && data.number.size() > 0
+        && data.number.size() <= 32
+        && data.name is string
+        && data.name.size() <= 200
+        && data.status in ['unpriced', 'available', 'sold']
+        && (!('priceCents' in data) || (data.priceCents is int && data.priceCents >= 0))
+        && (!('floorCents' in data) || (data.floorCents is int && data.floorCents >= 0));
+    }
+
+    function validReceipt(data) {
+      return data.amountCents is int
+        && data.amountCents > 0
+        && data.category in ['table', 'travel', 'inventory', 'supplies', 'other']
+        && data.note is string
+        && data.note.size() <= 500;
+    }
+
+    function validDeal(data) {
+      return data.agreedCents is int
+        && data.agreedCents >= 0
+        && data.subtotalCents is int
+        && data.subtotalCents >= 0
+        && data.lines is list
+        && data.lines.size() <= 500;
+    }
+  }
+}
