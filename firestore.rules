@@ -20,7 +20,7 @@ service cloud.firestore {
       allow create, update: if request.auth != null
         && request.auth.uid == userId
         && isKnownCollection(collection)
-        && validRecord(collection, request.resource.data);
+        && validRecord(collection, request.resource.data, docId);
 
       // Records are tombstoned, never removed — a hard delete is
       // indistinguishable from "not synced yet" and resurrects on the next pull.
@@ -35,7 +35,10 @@ service cloud.firestore {
       return name in ['stacks', 'cards', 'deals', 'receipts'];
     }
 
-    function validRecord(collection, data) {
+    // docId is passed in explicitly: a function declared here does NOT inherit
+    // the path variables of a nested match, so referencing docId directly
+    // evaluates to null and denies every write with "Null value error".
+    function validRecord(collection, data, docId) {
       return data.id is string
         && data.id.size() > 0
         && data.id == docId

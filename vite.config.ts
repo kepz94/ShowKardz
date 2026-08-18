@@ -11,5 +11,8 @@ export default defineConfig(({ command, isPreview }) => ({
     globals: true,
     environment: 'node',
     include: ['src/**/*.test.ts'],
+    // The rules suite needs the Firestore emulator and Java, so it runs on its
+    // own (npm run test:rules) and stays out of the deploy gate.
+    exclude: ['src/rules.test.ts', '**/node_modules/**'],
   },
 }));

@@ -52,10 +52,17 @@ Cards carry a plain number sticker — nothing else. The price lives in the app,
 
 ```
 npm install
-npm run dev      # http://localhost:5173
-npm test         # the logic suite — money math, floors, merge rule, integrity
-npm run build    # tsc --noEmit && vite build
+npm run dev        # http://localhost:5173
+npm test           # the logic suite — money math, floors, merge rules, integrity
+npm run test:rules # firestore.rules against the emulator (needs Java)
+npm run build      # tsc --noEmit && vite build
 ```
+
+`test:rules` runs every allow and every deny as a real request against the rules
+engine. It is deliberately not part of the deploy gate — it needs Java and the
+emulator — but it is the only thing that actually proves the rules, and reading
+them is not a substitute: the first version denied every write in the app because
+a function referenced a path variable it could not see.
 
 Deployed by GitHub Actions to Pages on every push to `main`.
 
