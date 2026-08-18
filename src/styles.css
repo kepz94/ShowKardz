@@ -90,8 +90,14 @@ h2 .count{font-weight:600;letter-spacing:.06em;color:var(--line2)}
 .stat{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-md);
       padding:13px 13px 14px;box-shadow:var(--sh-1);min-width:0}
 .stat .k{font-size:9.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--mut)}
-.stat .v{font-size:23px;font-weight:680;letter-spacing:-.03em;margin-top:5px;
-         white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat .v{
+  /* A third of a phone width has to hold a negative figure with cents
+     ("-$52.50"). At a fixed 23px that ellipsizes into "-$52..." — a truncated
+     amount is worse than no amount, so the size gives way before the digits do. */
+  font-size:clamp(17px,5.1vw,23px);
+  font-weight:680;letter-spacing:-.03em;margin-top:5px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
 .stat .s{font-size:11.5px;color:var(--mut);margin-top:2px}
 .stat.money{background:var(--money-soft);border-color:var(--money-line)}
 .stat.money .v{color:var(--money)}
@@ -202,6 +208,12 @@ button.row:hover{background:var(--raised)}
 .row .x:hover{color:var(--alert)}
 .thumb{width:42px;height:42px;border-radius:var(--r-sm);object-fit:cover;flex:none;
        border:1px solid var(--line2);background:var(--bg)}
+/* Photos never sync, so a record from another device legitimately has no image
+   here. Say that, rather than showing an unexplained empty square. */
+.thumb.absent{display:flex;align-items:center;justify-content:center;text-align:center;
+              font-size:8.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+              color:var(--mut);line-height:1.15;padding:3px;border-style:dashed}
+.thumb.absent.loading{border-style:solid}
 
 .pill{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.08em;
       text-transform:uppercase;padding:3px 8px;border-radius:var(--r-pill);

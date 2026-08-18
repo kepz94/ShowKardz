@@ -2,9 +2,23 @@
  * Document shapes for SHOWKARDZ. This file is the contract: UI, storage, and
  * any future serverless function all read and write these types.
  *
- * Storage note: v1 persists to localStorage under a repository interface
- * (src/lib/store.ts). Firestore is the intended record of truth — the shapes
- * here are already Firestore-document-shaped so the swap is additive.
+ * THE SYNC BOUNDARY
+ * -----------------
+ * Everything in `DB` syncs. Stacks, cards, deals and receipts are records, they
+ * are small, and they are the thing a dealer cannot afford to lose — Firestore
+ * is their intended home, with the device holding a copy.
+ *
+ * Photographs do NOT sync. An image is stored in this device's IndexedDB
+ * (lib/photos.ts) and referenced from a record by id only. That keeps the sync
+ * payload small and the app free to run, at a cost that is deliberate and worth
+ * stating plainly: a photo exists on exactly one device, and if that device is
+ * lost, wiped, or reinstalled, the image is gone for good while the record it
+ * belonged to survives. On any other device the reference resolves to nothing,
+ * which is a normal state rather than an error — see lib/attachments.ts.
+ *
+ * Storage note: v1 persists `DB` to localStorage under a repository interface
+ * (src/lib/store.tsx). The shapes here are already Firestore-document-shaped so
+ * the swap is additive.
  */
 
 /** ISO-8601 timestamp. Stored as a string so records survive JSON round-trips. */

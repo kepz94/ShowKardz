@@ -1,10 +1,11 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useStore, newId, nowIso } from '../lib/store';
 import { dollarsToCents, formatCents } from '../lib/money';
 import { bookSummary } from '../lib/books';
 import { downscale } from '../lib/images';
 import { putPhoto, deletePhoto } from '../lib/photos';
 import { PhotoThumb } from '../components/PhotoThumb';
+import { readStorage, formatBytes, type StorageReport } from '../lib/storage';
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from '../types';
 
 /** Category → its label. Built as a typed record so every lookup is total. */
@@ -23,6 +24,15 @@ export function Receipts() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+
+  const [storage, setStorage] = useState<StorageReport | null>(null);
+
+  // Re-read after every filing, so the figure moves when a photo is added.
+  useEffect(() => {
+    let cancelled = false;
+    readStorage().then((r) => { if (!cancelled) setStorage(r); });
+    return () => { cancelled = true; };
+  }, [db.receipts.length]);
 
   const s = bookSummary(db);
   const amountCents = dollarsToCents(amount);
@@ -189,6 +199,29 @@ export function Receipts() {
                 <span className="amt">{formatCents(c.totalCents)}</span>
               </div>
             ))}
+          </div>
+        </>
+      )}
+
+      {storage?.supported && storage.usageBytes != null && (
+        <>
+          <h2>On this phone</h2>
+          <div className="card">
+            <div className="dl">
+              <span className="muted">Photos and records</span>
+              <span>{formatBytes(storage.usageBytes)}</span>
+            </div>
+            {storage.quotaBytes != null && (
+              <div className="dl b">
+                <span>Room available</span>
+                <span>{formatBytes(storage.quotaBytes)}</span>
+              </div>
+            )}
+            <p className="claim">
+              {storage.persisted
+                ? 'Photos stay on this phone and are not synced. This device has been granted persistent storage, so they are not evicted for being unused.'
+                : 'Photos stay on this phone and are not synced. Persistent storage was not granted — add the app to your Home Screen and use it at least every seven days, or the photos can be cleared.'}
+            </p>
           </div>
         </>
       )}

@@ -6,9 +6,15 @@ These shape the data model and belong in acceptance criteria, not in code commen
 
 **Add to Home Screen is a hard requirement.** iOS caps script-writable storage — IndexedDB and service worker caches — at roughly seven days of inactivity. Installed home-screen web apps get their own days-of-use counter, separate from Safari, which resets whenever the app is actually used. A dealer running the app as a browser tab between monthly shows can lose the local case.
 
-**Local storage is a cache, never the record.** Firestore is the truth; the device holds a copy. Eviction then costs a re-sync at home, not the inventory. This produces a product rule: open the app on wifi before leaving for the show, not at the table.
+**Local storage is a cache, never the record — for records.** Firestore is the truth; the device holds a copy. Eviction then costs a re-sync at home, not the inventory. This produces a product rule: open the app on wifi before leaving for the show, not at the table.
 
-**~50MB cache ceiling.** Fine for text, not for card photos. Don't cache photos for offline — show day needs number → name → price. Photos belong to the price pass at home.
+**Photographs are the exception, and they are device-local by decision.** Card and receipt images stay in this phone's IndexedDB and are never uploaded; only the reference syncs. The sync payload stays small and the app stays free to run. The accepted cost: an image lives on exactly one device and cannot be recovered if that device is lost — which lands hardest on receipt photos, the records most likely to be wanted months later. Any other device shows the expense in full with the photo marked as being elsewhere.
+
+**Size is not the constraint; eviction is.** The old ~50MB ceiling this doc used to cite is several iOS versions out of date. Since Safari 17 / iOS 17 an origin may use roughly 60% of total disk, under an overall 80% cap, and Safari no longer prompts for more space. A Home Screen web app gets the same origin quota as Safari. On a 256GB phone that is tens of gigabytes — photographs are not a space problem.
+
+What does bite is deletion. WebKit removes all script-written storage — IndexedDB, localStorage, service worker registrations — for an origin with no user interaction in seven days of browser use. Two things exempt an origin: installation to the Home Screen, which gets its own days-of-use counter, and `navigator.storage.persist()`, which the app requests on every launch. Both matter, because photos are stored on one device only.
+
+**Don't cache photos for the show floor.** Still true, but now a choice rather than a forced one: show day needs number → name → price, and nothing on that screen is improved by an image. Photos belong to the price pass and to receipts, at home.
 
 ## Data model
 
