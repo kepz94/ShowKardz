@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="SHOWKARDZ">
+<meta name="theme-color" content="#F2F2EF">
+<title>SHOWKARDZ — design set</title>
+<style>
+  :root{
+    --bg:#F2F2EF; --paper:#FFF; --ink:#0D0D0D; --ink2:#41413C; --mut:#75756E;
+    --hair:#E4E4DF; --hair2:#CFCFC8; --field:#F5F5F1;
+    --sans:"Segoe UI Variable Text","Segoe UI",-apple-system,system-ui,sans-serif;
+    --mono:Consolas,"Cascadia Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+       font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;
+       padding:34px 20px 80px;line-height:1.5}
+  .wrap{max-width:660px;margin:0 auto}
+
+  .eb{font-size:11px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:var(--mut)}
+  h1{margin:9px 0 0;font-size:27px;font-weight:600;letter-spacing:-.02em;text-wrap:balance}
+  .lede{font-size:14.5px;color:var(--ink2);margin:11px 0 0}
+  .status{display:inline-block;margin-top:16px;padding:5px 11px;border-radius:20px;
+          background:var(--paper);border:1px solid var(--hair2);font-size:12px;color:var(--mut)}
+
+  h2{font-size:12px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:var(--mut);
+     margin:38px 0 0;padding-bottom:9px;border-bottom:1px solid var(--hair2)}
+
+  .list{display:grid;gap:11px;margin-top:16px}
+  a.card{display:block;text-decoration:none;color:inherit;background:var(--paper);
+         border:1px solid var(--hair2);border-radius:10px;padding:15px 17px}
+  a.card:hover{border-color:var(--ink);background:var(--field)}
+  a.card:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+  a.card .step{font-size:10.5px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;color:var(--mut)}
+  a.card .t{font-size:17px;font-weight:600;letter-spacing:-.01em;margin-top:4px}
+  a.card .d{font-size:13.5px;color:var(--ink2);margin-top:4px}
+
+  .docs{display:grid;gap:9px;margin-top:16px;font-size:14px}
+  .docs a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--hair2);
+          padding-bottom:1px;width:fit-content}
+  .docs a:hover{border-color:var(--ink)}
+  .docs a:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+  .docs span{color:var(--mut);font-size:13px}
+
+  .note{margin-top:16px;padding:14px 16px;background:var(--paper);border:1px solid var(--hair2);
+        border-radius:10px;font-size:13.5px;color:var(--ink2)}
+  .note b{color:var(--ink);font-weight:600}
+  footer{margin-top:44px;padding-top:16px;border-top:1px solid var(--hair2);
+         font-size:12.5px;color:var(--mut)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eb">SHOWKARDZ</div>
+  <h1>Interaction design set</h1>
+  <p class="lede">A number-keyed, offline-first tool for sports card show dealers. Price the showcase at home the night before, run cash sales and trades at the table with instant deal math, close the day with per-card books and a shrink audit.</p>
+  <div class="status">Planning — no application code yet</div>
+
+  <h2>Screens</h2>
+  <div class="list">
+    <a class="card" href="01-night-before.html">
+      <div class="step">Step 1 · Home, wifi</div>
+      <div class="t">Night before</div>
+      <div class="d">Declare the stack, scan each card, then the price pass. Phone-first, with states.</div>
+    </a>
+    <a class="card" href="02-show-day-cash-sale.html">
+      <div class="step">Step 2 · Show floor, offline</div>
+      <div class="t">Cash sale</div>
+      <div class="d">Type the numbers off the stickers. Running total, deal math, floor warnings and bad-number states.</div>
+    </a>
+    <a class="card" href="comps-query-test.html">
+      <div class="step">Open question 2</div>
+      <div class="t">Comps query ladder</div>
+      <div class="d">Live harness — type a card, get the fallback chain of real eBay sold-listing URLs.</div>
+    </a>
+  </div>
+
+  <div class="note">
+    <b>Not yet designed:</b> the trade screen (two dials, who owes cash) and close-out.
+  </div>
+
+  <h2>Spec</h2>
+  <div class="docs">
+    <a href="https://github.com/kepz94/ShowKardz/blob/main/docs/SRD.md">SRD</a> <span>Full spec: workflow, adopted features, market context.</span>
+    <a href="https://github.com/kepz94/ShowKardz/blob/main/docs/open-questions.md">Open questions</a> <span>Decisions still owed before build.</span>
+    <a href="https://github.com/kepz94/ShowKardz/blob/main/docs/platform-constraints.md">Platform constraints</a> <span>iOS PWA realities that shape the data model.</span>
+  </div>
+
+  <footer>Every zone on these screens is numbered and annotated with what it does and why it exists. Strictly seller-side. No marketplace.</footer>
+
+</div>
+</body>
+</html>

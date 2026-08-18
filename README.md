@@ -4,7 +4,7 @@ A number-keyed, offline-first tool for sports card show dealers. Price your show
 
 Strictly seller-side. No marketplace. Free to run.
 
-**Status: planning.** No application code yet. This repo currently holds the spec and the interaction design. Build has not been called.
+**Status: building.** The app runs — the three-step flow is implemented, the money math and the integrity rule are under test, and it installs to the home screen. Records are local to the device; Firestore sync is not wired yet (see Known gaps).
 
 ---
 
@@ -38,12 +38,27 @@ Cards carry a plain number sticker — nothing else. The price lives in the app,
 - **Phone-first.** The rear camera has autofocus and macro; a laptop webcam is a fixed-focus wide-angle pointed at your face. The phone is the scanner. The laptop is the same screens at more width.
 - No marketplace, no aggregated price signal — cut deliberately.
 
+## Running it
+
+```
+npm install
+npm run dev      # http://localhost:5173
+npm test         # the logic suite — money math, floors, merge rule, integrity
+npm run build    # tsc --noEmit && vite build
+```
+
+Deployed by GitHub Actions to Pages on every push to `main`.
+
 ## Repo layout
 
 ```
-design/    Interaction specs. Open in a browser — every zone is numbered
-           and annotated with what it does and why it exists.
-docs/      SRD, open questions, platform constraints.
+src/lib/     Logic, all of it pure and tested: deal math, floors, sticker
+             numbers, title composition, comps URLs, the sold-wins merge
+             rule, and the reducer that is the single write path.
+src/screens/ One screen per step of the day.
+design/      Interaction specs. Open in a browser — every zone is numbered
+             and annotated with what it does and why it exists.
+docs/        SRD, open questions, platform constraints.
 ```
 
 | File | What it covers |
@@ -56,14 +71,31 @@ docs/      SRD, open questions, platform constraints.
 
 Not yet designed: the trade screen (two dials, who owes cash) and close-out.
 
-## Stack (when build is called)
+## Stack
 
-React + TypeScript PWA on Vercel. Firebase Auth + Firestore with offline persistence and queued writes. Serverless functions in `api/`, each fully self-contained.
+React + TypeScript PWA, built with Vite. Firebase Auth + Firestore is the intended
+record of truth; it is not wired yet.
 
-Two invariants to protect from day one:
+Both invariants are enforced and covered by tests from day one:
 
-- **Duplicate sticker numbers are blocked.** The one hard integrity rule in the product.
-- **Sold wins.** The merge rule for offline-tolerant sync. Totals are derived from records, never from counters. The physical card is the real lock — one card, one hand — so genuine conflicts are rare by nature.
+- **Duplicate sticker numbers are blocked** — in the reducer, not in a screen, so no
+  new entry path can forget the rule. The one hard integrity rule in the product.
+- **Sold wins.** The merge rule for offline-tolerant sync, implemented in
+  `src/lib/merge.ts` ahead of the sync that will use it. Totals are derived from
+  records, never from counters. The physical card is the real lock — one card, one
+  hand — so genuine conflicts are rare by nature.
+
+## Known gaps
+
+- **No Firestore.** Records live in `localStorage` on the one device. The swap lands
+  in `src/lib/store.tsx` and nowhere else; `mergeCard` is already written for it.
+  Until then the SRD's "local is a cache, never the record" is inverted.
+- **No camera read.** Sticker number and player name are typed. The one-shot camera
+  read described in the SRD is not built.
+- **Cash sales only.** The trade screen (two dials, who owes cash) is neither
+  designed nor built. Hold tabs, lot mode and the dead-weight radar are not built.
+- **One stack at a time.** The night-before flow uses the most recently declared
+  stack; there is no stack switcher.
 
 ## Project tracking
 

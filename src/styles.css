@@ -1,0 +1,120 @@
+/* SHOWKARDZ — the register the design specs established: paper ground, ink
+   type, a dark band where the phone is doing work. Phone-first; the laptop is
+   the same screens at more width. */
+:root{
+  --bg:#F2F2EF; --paper:#FFF; --ink:#0D0D0D; --ink2:#41413C; --mut:#75756E;
+  --hair:#E4E4DF; --hair2:#CFCFC8; --field:#F5F5F1;
+  --warn:#C4361A; --warnbg:#FDF0ED; --warnhair:#F0CFC7;
+  --ok:#1B6B4A; --okbg:#EDF6F1; --okhair:#C9E3D6;
+  --sans:-apple-system,"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;
+  --mono:ui-monospace,Consolas,"Cascadia Mono",monospace;
+}
+*{box-sizing:border-box}
+html,body,#root{height:100%}
+body{
+  margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+  font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;line-height:1.5;
+  /* Installed PWA: keep content clear of the notch and the home indicator. */
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+.app{max-width:560px;margin:0 auto;padding:20px 16px 96px}
+
+.eb{font-size:11px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:var(--mut)}
+h1{margin:8px 0 0;font-size:25px;font-weight:600;letter-spacing:-.02em;text-wrap:balance}
+h2{font-size:12px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:var(--mut);
+   margin:30px 0 0;padding-bottom:8px;border-bottom:1px solid var(--hair2)}
+.lede{font-size:14.5px;color:var(--ink2);margin:10px 0 0}
+.muted{color:var(--mut)}
+
+/* --- controls. 16px minimum on anything focusable: iOS zooms below that and
+       the zoom sticks in an installed PWA. --- */
+button,input,select{font-family:inherit;font-size:16px}
+.btn{border:0;border-radius:9px;background:var(--ink);color:#fff;font-weight:600;
+     padding:15px 18px;cursor:pointer;width:100%;font-size:16px}
+.btn:hover{background:#282824}
+.btn:disabled{background:var(--hair2);color:#8C8C85;cursor:not-allowed}
+.btn.ghost{background:var(--paper);border:1px solid var(--hair2);color:var(--ink2)}
+.btn.ghost:hover{background:var(--field)}
+.btn.warn{background:var(--warn)}
+.btn.warn:hover{background:#A82D15}
+.btn .sub{display:block;font-size:12.5px;font-weight:500;opacity:.85;margin-top:2px}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+label{display:block;font-size:10.5px;font-weight:600;letter-spacing:.09em;
+      text-transform:uppercase;color:var(--mut);margin-bottom:5px}
+input[type=text],input[type=tel]{width:100%;padding:12px 13px;border:1px solid var(--hair2);
+      border-radius:8px;background:var(--field);color:var(--ink)}
+input:focus{outline:2px solid var(--ink);outline-offset:1px;background:var(--paper)}
+.row{display:grid;gap:11px}
+.row.two{grid-template-columns:1fr 1fr}
+
+.card{background:var(--paper);border:1px solid var(--hair2);border-radius:11px;padding:16px}
+.stack-grid{display:grid;gap:11px;margin-top:14px}
+
+/* --- nav --- */
+.nav{display:grid;gap:10px;margin-top:16px}
+.nav a{display:block;text-decoration:none;color:inherit;background:var(--paper);
+       border:1px solid var(--hair2);border-radius:11px;padding:15px 16px;cursor:pointer}
+.nav a:hover{border-color:var(--ink);background:var(--field)}
+.nav .step{font-size:10.5px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;color:var(--mut)}
+.nav .t{font-size:17px;font-weight:600;letter-spacing:-.01em;margin-top:3px}
+.nav .d{font-size:13.5px;color:var(--ink2);margin-top:3px}
+.back{background:none;border:0;color:var(--mut);font-size:16px;padding:8px 0;cursor:pointer;width:auto}
+.back:hover{color:var(--ink)}
+
+/* --- the dark working band (intake, number entry) --- */
+.band{background:var(--ink);color:#fff;border-radius:12px;padding:15px 16px;margin-top:14px}
+.band .l{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;opacity:.6;font-weight:600}
+.band .v{font-size:16px;font-weight:600;letter-spacing:-.01em;margin-top:2px}
+.band .digits{font-family:var(--mono);font-size:34px;font-weight:700;letter-spacing:.12em;margin-top:6px}
+.band .digits .ph{opacity:.35}
+
+/* --- feedback --- */
+.flash{padding:12px 14px;border-radius:9px;font-size:14.5px;font-weight:600;margin-top:12px}
+.flash.ok{background:var(--okbg);border:1px solid var(--okhair);color:var(--ok)}
+.flash.bad{background:var(--warnbg);border:1px solid var(--warnhair);color:var(--warn)}
+.flash span{display:block;font-weight:400;color:var(--ink2);font-size:13px;margin-top:2px}
+
+/* --- lists --- */
+.list{display:grid;gap:0;margin-top:14px;background:var(--paper);
+      border:1px solid var(--hair2);border-radius:11px;overflow:hidden}
+.line{display:flex;align-items:flex-start;gap:11px;padding:13px 15px}
+.line+.line{border-top:1px solid var(--hair)}
+.line .no{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--mut);
+          width:52px;flex:none;padding-top:2px}
+.line .mid{flex:1;min-width:0}
+.line .nm{font-size:14.5px;font-weight:500}
+.line .mt{font-size:12.5px;color:var(--mut);margin-top:1px}
+.line .pr{font-size:15px;font-weight:600;text-align:right;white-space:nowrap}
+.line .x{background:none;border:0;color:var(--mut);font-size:20px;cursor:pointer;
+         padding:0 0 0 6px;line-height:1;width:auto}
+.line .x:hover{color:var(--warn)}
+.empty{padding:22px 16px;text-align:center;color:var(--mut);font-size:14px}
+
+/* --- keypad --- */
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.key{background:var(--paper);border:1px solid var(--hair2);border-radius:9px;
+     font-size:21px;font-weight:500;color:var(--ink);padding:15px 0;cursor:pointer}
+.key:hover{background:var(--field)}
+.key.sm{font-size:13.5px;font-weight:600;color:var(--mut)}
+
+/* --- deal math --- */
+.deal{margin-top:14px;padding:15px 16px;border:1px solid var(--hair2);border-radius:11px;background:var(--paper)}
+.dl{display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px}
+.dl.b{color:var(--mut)}
+.dial{margin-top:13px;padding-top:13px;border-top:1px solid var(--hair)}
+.dial .top{display:flex;justify-content:space-between;align-items:baseline}
+.dial .pct{font-size:13px;color:var(--mut);font-weight:500}
+.dial .amt{font-size:27px;font-weight:600;letter-spacing:-.02em}
+input[type=range]{width:100%;margin:10px 0 0;accent-color:#0D0D0D;height:26px}
+.floorline{display:flex;justify-content:space-between;font-size:13px;margin-top:9px}
+.floorline .good{color:var(--ok);font-weight:600}
+.floorline .bad{color:var(--warn);font-weight:600}
+
+.evidence{display:block;margin-top:8px;font-size:13.5px;color:var(--ink);
+          text-decoration:none;border-bottom:1px solid var(--hair2);width:fit-content}
+.evidence:hover{border-color:var(--ink)}
+.claim{font-size:11.5px;color:var(--mut);margin-top:6px}
+
+.sticky{position:sticky;bottom:0;background:linear-gradient(to top,var(--bg) 72%,transparent);
+        padding:14px 0 6px;margin-top:16px}

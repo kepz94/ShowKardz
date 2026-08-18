@@ -1,0 +1,16 @@
+{
+  "name": "SHOWKARDZ",
+  "short_name": "SHOWKARDZ",
+  "description": "Number-keyed, offline-first table tool for sports card show dealers.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F2F2EF",
+  "theme_color": "#F2F2EF",
+  "icons": [
+    { "src": "./icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
