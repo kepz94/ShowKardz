@@ -6,7 +6,7 @@
  * The reducer is pure: ids and timestamps arrive on the action rather than being
  * generated here, so every transition is reproducible in a test.
  */
-import type { Card, DB, Deal, DealLine, Stack } from '../types';
+import type { Card, DB, Deal, DealLine, ExpenseCategory, Receipt, Stack } from '../types';
 import { isDuplicate } from './numbers';
 import { splitByWeight, sumAsks } from './money';
 import { composeTitle } from './title';
@@ -15,6 +15,9 @@ export type Action =
   | { type: 'stack/add'; id: string; year: string; product: string; parallel: string; now: string }
   | { type: 'card/add'; id: string; stackId: string; number: string; name: string; cardNumber?: string; now: string }
   | { type: 'card/price'; cardId: string; priceCents: number; floorCents?: number; now: string }
+  | { type: 'card/edit'; cardId: string; number?: string; name?: string; cardNumber?: string; now: string }
+  | { type: 'receipt/add'; id: string; amountCents: number; category: ExpenseCategory; note: string; photoId?: string; now: string }
+  | { type: 'receipt/delete'; id: string }
   | { type: 'deal/record'; id: string; cardIds: string[]; agreedCents: number; now: string }
   | { type: 'db/replace'; db: DB };
 
@@ -61,6 +64,46 @@ export function reducer(db: DB, action: Action): DB {
         ),
       };
     }
+
+    case 'card/edit': {
+      const target = db.cards.find((c) => c.id === action.cardId);
+      if (!target) return db;
+
+      // Renumbering runs through the same integrity rule as a new card — a card
+      // may keep its own number, but may not take one another card wears.
+      const number = action.number ?? target.number;
+      if (isDuplicate(db.cards, number, target.id)) return db;
+
+      return {
+        ...db,
+        cards: db.cards.map((c) =>
+          c.id === action.cardId
+            ? {
+                ...c,
+                number,
+                name: action.name ?? c.name,
+                cardNumber: action.cardNumber ?? c.cardNumber,
+                updatedAt: action.now,
+              }
+            : c,
+        ),
+      };
+    }
+
+    case 'receipt/add': {
+      // A zero or negative expense is a typo, not a record.
+      if (action.amountCents <= 0) return db;
+
+      const receipt: Receipt = {
+        id: action.id, amountCents: action.amountCents, category: action.category,
+        note: action.note, photoId: action.photoId,
+        createdAt: action.now, updatedAt: action.now,
+      };
+      return { ...db, receipts: [...db.receipts, receipt] };
+    }
+
+    case 'receipt/delete':
+      return { ...db, receipts: db.receipts.filter((r) => r.id !== action.id) };
 
     case 'deal/record': {
       const cards = action.cardIds

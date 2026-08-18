@@ -91,3 +91,73 @@ describe('deal/record', () => {
     expect(empty.deals).toHaveLength(0);
   });
 });
+
+describe('receipt/add', () => {
+  const NOW2 = '2026-08-18T13:00:00.000Z';
+
+  it('files an expense', () => {
+    const db = reducer(EMPTY_DB, {
+      type: 'receipt/add', id: 'r1', amountCents: 4000, category: 'table',
+      note: 'Saturday table', now: NOW2,
+    });
+    expect(db.receipts).toHaveLength(1);
+    expect(db.receipts[0]!.amountCents).toBe(4000);
+  });
+
+  it('keeps the photo reference when there is one', () => {
+    const db = reducer(EMPTY_DB, {
+      type: 'receipt/add', id: 'r1', amountCents: 4000, category: 'table',
+      note: '', photoId: 'p1', now: NOW2,
+    });
+    expect(db.receipts[0]!.photoId).toBe('p1');
+  });
+
+  it('refuses a zero or negative amount rather than filing a meaningless expense', () => {
+    expect(reducer(EMPTY_DB, {
+      type: 'receipt/add', id: 'r1', amountCents: 0, category: 'other', note: '', now: NOW2,
+    }).receipts).toHaveLength(0);
+    expect(reducer(EMPTY_DB, {
+      type: 'receipt/add', id: 'r2', amountCents: -500, category: 'other', note: '', now: NOW2,
+    }).receipts).toHaveLength(0);
+  });
+});
+
+describe('receipt/delete', () => {
+  const NOW2 = '2026-08-18T13:00:00.000Z';
+  const withReceipt = reducer(EMPTY_DB, {
+    type: 'receipt/add', id: 'r1', amountCents: 4000, category: 'table', note: '', now: NOW2,
+  });
+
+  it('removes the expense', () => {
+    expect(reducer(withReceipt, { type: 'receipt/delete', id: 'r1' }).receipts).toHaveLength(0);
+  });
+
+  it('leaves the book alone when the id is not there', () => {
+    expect(reducer(withReceipt, { type: 'receipt/delete', id: 'nope' }).receipts).toHaveLength(1);
+  });
+});
+
+describe('card/edit', () => {
+  it('renames a card without touching its number', () => {
+    let db = withStack();
+    db = reducer(db, { type: 'card/add', id: 'c1', stackId: 's1', number: '0455', name: 'Edwrads', now: NOW });
+    db = reducer(db, { type: 'card/edit', cardId: 'c1', name: 'Edwards', now: NOW });
+    expect(db.cards[0]!.name).toBe('Edwards');
+    expect(db.cards[0]!.number).toBe('0455');
+  });
+
+  it('BLOCKS a renumber onto a number another card already wears', () => {
+    let db = withStack();
+    db = reducer(db, { type: 'card/add', id: 'c1', stackId: 's1', number: '0455', name: 'A', now: NOW });
+    db = reducer(db, { type: 'card/add', id: 'c2', stackId: 's1', number: '0456', name: 'B', now: NOW });
+    db = reducer(db, { type: 'card/edit', cardId: 'c2', number: '0455', now: NOW });
+    expect(db.cards.find((c) => c.id === 'c2')!.number).toBe('0456');
+  });
+
+  it('allows a card to keep its own number through an edit', () => {
+    let db = withStack();
+    db = reducer(db, { type: 'card/add', id: 'c1', stackId: 's1', number: '0455', name: 'A', now: NOW });
+    db = reducer(db, { type: 'card/edit', cardId: 'c1', number: '0455', name: 'B', now: NOW });
+    expect(db.cards[0]!.name).toBe('B');
+  });
+});

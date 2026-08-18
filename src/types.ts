@@ -86,11 +86,44 @@ export interface Deal {
   createdAt: Timestamp;
 }
 
+/** What a receipt was for. Drives the expense breakdown. */
+export type ExpenseCategory = 'table' | 'travel' | 'inventory' | 'supplies' | 'other';
+
+export const EXPENSE_CATEGORIES: { value: ExpenseCategory; label: string }[] = [
+  { value: 'table', label: 'Table fee' },
+  { value: 'travel', label: 'Travel' },
+  { value: 'inventory', label: 'Inventory' },
+  { value: 'supplies', label: 'Supplies' },
+  { value: 'other', label: 'Other' },
+];
+
+/**
+ * Money going out — the other half of a show's real number.
+ *
+ * A paper receipt is photographed rather than transcribed; the image itself is
+ * too big for the record, so it lives in IndexedDB (lib/photos.ts) and is
+ * referenced by id here. `photoId` absent means a digital or hand-entered
+ * expense with no image, which is a normal state, not a missing one.
+ */
+export interface Receipt {
+  id: string;
+  /** In whole cents, like every other amount in the app. */
+  amountCents: number;
+  category: ExpenseCategory;
+  /** What it was — "Table fee, Saturday" or a vendor name. */
+  note: string;
+  /** Key into the photo store. Absent when there is no picture. */
+  photoId?: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
 /** The whole persisted state. One document's worth. */
 export interface DB {
   stacks: Stack[];
   cards: Card[];
   deals: Deal[];
+  receipts: Receipt[];
 }
 
-export const EMPTY_DB: DB = { stacks: [], cards: [], deals: [] };
+export const EMPTY_DB: DB = { stacks: [], cards: [], deals: [], receipts: [] };

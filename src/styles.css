@@ -1,120 +1,269 @@
-/* SHOWKARDZ — the register the design specs established: paper ground, ink
-   type, a dark band where the phone is doing work. Phone-first; the laptop is
-   the same screens at more width. */
+/* ============================================================================
+   SHOWKARDZ
+
+   Reference class is a real register — Square, Shopify POS — not a document.
+   The screen is read at arm's length under bad hall lighting, one-handed, with
+   a buyer waiting. That drives everything below: money is the largest thing on
+   any screen, tap targets are generous, and the surfaces carry enough depth to
+   separate what is actionable from what is only information.
+
+   Neutrals are warm (a green-olive bias, not grey) so they sit with the paper
+   ground rather than fighting it. One accent does the work: a deep green that
+   means money. Red is reserved — it only ever means a floor is about to break.
+   ========================================================================== */
 :root{
-  --bg:#F2F2EF; --paper:#FFF; --ink:#0D0D0D; --ink2:#41413C; --mut:#75756E;
-  --hair:#E4E4DF; --hair2:#CFCFC8; --field:#F5F5F1;
-  --warn:#C4361A; --warnbg:#FDF0ED; --warnhair:#F0CFC7;
-  --ok:#1B6B4A; --okbg:#EDF6F1; --okhair:#C9E3D6;
-  --sans:-apple-system,"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;
-  --mono:ui-monospace,Consolas,"Cascadia Mono",monospace;
+  --bg:#F3F3EF;
+  --paper:#FFFFFF;
+  --raised:#FAFAF7;
+  --ink:#14140F;
+  --ink2:#4A4A42;
+  --mut:#7C7C72;
+  --line:#E8E8E2;
+  --line2:#D6D6CE;
+
+  --money:#0B6B45;
+  --money-soft:#E9F3ED;
+  --money-line:#C4E0D0;
+
+  --alert:#B23417;
+  --alert-soft:#FBEEE9;
+  --alert-line:#F0CEC2;
+
+  --band:#14140F;
+  --band-2:#22221C;
+
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Consolas,"Cascadia Mono",monospace;
+
+  --r-sm:8px; --r-md:11px; --r-lg:15px; --r-pill:999px;
+  --sh-1:0 1px 2px rgba(20,20,15,.05);
+  --sh-2:0 1px 3px rgba(20,20,15,.06), 0 6px 16px rgba(20,20,15,.05);
+  --sh-band:0 2px 10px rgba(20,20,15,.18);
+
+  --tabbar-h:64px;
 }
 *{box-sizing:border-box}
-html,body,#root{height:100%}
+html{-webkit-text-size-adjust:100%}
 body{
   margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
-  font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;line-height:1.5;
-  /* Installed PWA: keep content clear of the notch and the home indicator. */
-  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;line-height:1.45;
+  overscroll-behavior-y:none;
 }
-.app{max-width:560px;margin:0 auto;padding:20px 16px 96px}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.001ms !important;transition-duration:.001ms !important}
+}
 
-.eb{font-size:11px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:var(--mut)}
-h1{margin:8px 0 0;font-size:25px;font-weight:600;letter-spacing:-.02em;text-wrap:balance}
-h2{font-size:12px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:var(--mut);
-   margin:30px 0 0;padding-bottom:8px;border-bottom:1px solid var(--hair2)}
-.lede{font-size:14.5px;color:var(--ink2);margin:10px 0 0}
+/* ---- shell -------------------------------------------------------------- */
+.app{
+  max-width:600px;margin:0 auto;
+  padding:
+    calc(env(safe-area-inset-top) + 18px)
+    calc(env(safe-area-inset-right) + 16px)
+    calc(env(safe-area-inset-bottom) + var(--tabbar-h) + 28px)
+    calc(env(safe-area-inset-left) + 16px);
+}
+
+.screen-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px}
+.screen-head .eb{font-size:10.5px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--mut)}
+.screen-head h1{margin:5px 0 0;font-size:26px;font-weight:680;letter-spacing:-.025em;text-wrap:balance}
+.screen-head .aside{text-align:right;flex:none}
+.screen-head .aside .k{font-size:10px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--mut)}
+.screen-head .aside .v{font-size:21px;font-weight:680;letter-spacing:-.02em;margin-top:2px}
+
+h2{
+  font-size:10.5px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--mut);
+  margin:26px 0 10px;display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+}
+h2 .count{font-weight:600;letter-spacing:.06em;color:var(--line2)}
+.lede{font-size:14px;color:var(--ink2);margin:0 0 14px}
 .muted{color:var(--mut)}
+.tnum{font-variant-numeric:tabular-nums}
 
-/* --- controls. 16px minimum on anything focusable: iOS zooms below that and
-       the zoom sticks in an installed PWA. --- */
-button,input,select{font-family:inherit;font-size:16px}
-.btn{border:0;border-radius:9px;background:var(--ink);color:#fff;font-weight:600;
-     padding:15px 18px;cursor:pointer;width:100%;font-size:16px}
-.btn:hover{background:#282824}
-.btn:disabled{background:var(--hair2);color:#8C8C85;cursor:not-allowed}
-.btn.ghost{background:var(--paper);border:1px solid var(--hair2);color:var(--ink2)}
-.btn.ghost:hover{background:var(--field)}
-.btn.warn{background:var(--warn)}
-.btn.warn:hover{background:#A82D15}
-.btn .sub{display:block;font-size:12.5px;font-weight:500;opacity:.85;margin-top:2px}
-button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+/* ---- surfaces ----------------------------------------------------------- */
+.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-lg);
+      box-shadow:var(--sh-1);padding:16px}
+.card+.card{margin-top:11px}
 
-label{display:block;font-size:10.5px;font-weight:600;letter-spacing:.09em;
-      text-transform:uppercase;color:var(--mut);margin-bottom:5px}
-input[type=text],input[type=tel]{width:100%;padding:12px 13px;border:1px solid var(--hair2);
-      border-radius:8px;background:var(--field);color:var(--ink)}
-input:focus{outline:2px solid var(--ink);outline-offset:1px;background:var(--paper)}
-.row{display:grid;gap:11px}
-.row.two{grid-template-columns:1fr 1fr}
+/* ---- stat tiles --------------------------------------------------------- */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.stats.two{grid-template-columns:repeat(2,1fr)}
+.stat{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-md);
+      padding:13px 13px 14px;box-shadow:var(--sh-1);min-width:0}
+.stat .k{font-size:9.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--mut)}
+.stat .v{font-size:23px;font-weight:680;letter-spacing:-.03em;margin-top:5px;
+         white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat .s{font-size:11.5px;color:var(--mut);margin-top:2px}
+.stat.money{background:var(--money-soft);border-color:var(--money-line)}
+.stat.money .v{color:var(--money)}
+.stat.loss{background:var(--alert-soft);border-color:var(--alert-line)}
+.stat.loss .v{color:var(--alert)}
 
-.card{background:var(--paper);border:1px solid var(--hair2);border-radius:11px;padding:16px}
-.stack-grid{display:grid;gap:11px;margin-top:14px}
+/* ---- controls ----------------------------------------------------------- */
+/* 16px floor on every focusable control: iOS zooms below it and, in an
+   installed PWA, the zoom sticks with no way back. */
+button,input,select,textarea{font-family:inherit;font-size:16px;color:var(--ink)}
+:where(button,a,input,select,textarea):focus-visible{
+  outline:2.5px solid var(--ink);outline-offset:2px;border-radius:var(--r-sm);
+}
 
-/* --- nav --- */
-.nav{display:grid;gap:10px;margin-top:16px}
-.nav a{display:block;text-decoration:none;color:inherit;background:var(--paper);
-       border:1px solid var(--hair2);border-radius:11px;padding:15px 16px;cursor:pointer}
-.nav a:hover{border-color:var(--ink);background:var(--field)}
-.nav .step{font-size:10.5px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;color:var(--mut)}
-.nav .t{font-size:17px;font-weight:600;letter-spacing:-.01em;margin-top:3px}
-.nav .d{font-size:13.5px;color:var(--ink2);margin-top:3px}
-.back{background:none;border:0;color:var(--mut);font-size:16px;padding:8px 0;cursor:pointer;width:auto}
-.back:hover{color:var(--ink)}
+.btn{
+  display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1px;
+  width:100%;border:0;border-radius:var(--r-md);background:var(--ink);color:#fff;
+  font-size:16px;font-weight:650;letter-spacing:-.01em;padding:16px 18px;cursor:pointer;
+  box-shadow:var(--sh-1);transition:background .12s ease,transform .06s ease;
+}
+.btn:active{transform:translateY(1px)}
+.btn:hover{background:#2A2A22}
+.btn:disabled{background:#E3E3DC;color:#A5A59B;cursor:not-allowed;box-shadow:none}
+.btn .sub{font-size:12px;font-weight:500;opacity:.82;letter-spacing:0}
+.btn.money{background:var(--money)}
+.btn.money:hover{background:#0A5C3B}
+.btn.alert{background:var(--alert)}
+.btn.alert:hover{background:#982C13}
+.btn.ghost{background:var(--paper);border:1px solid var(--line2);color:var(--ink2);box-shadow:none}
+.btn.ghost:hover{background:var(--raised)}
+.btn.sm{padding:11px 14px;font-size:14.5px;font-weight:600}
 
-/* --- the dark working band (intake, number entry) --- */
-.band{background:var(--ink);color:#fff;border-radius:12px;padding:15px 16px;margin-top:14px}
-.band .l{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;opacity:.6;font-weight:600}
-.band .v{font-size:16px;font-weight:600;letter-spacing:-.01em;margin-top:2px}
-.band .digits{font-family:var(--mono);font-size:34px;font-weight:700;letter-spacing:.12em;margin-top:6px}
-.band .digits .ph{opacity:.35}
+.seg{display:grid;grid-auto-flow:column;gap:4px;background:var(--line);padding:4px;
+     border-radius:var(--r-md);margin-bottom:14px}
+.seg button{border:0;background:transparent;color:var(--ink2);font-size:14px;font-weight:600;
+            padding:10px 8px;border-radius:calc(var(--r-md) - 4px);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--paper);color:var(--ink);box-shadow:var(--sh-1)}
 
-/* --- feedback --- */
-.flash{padding:12px 14px;border-radius:9px;font-size:14.5px;font-weight:600;margin-top:12px}
-.flash.ok{background:var(--okbg);border:1px solid var(--okhair);color:var(--ok)}
-.flash.bad{background:var(--warnbg);border:1px solid var(--warnhair);color:var(--warn)}
-.flash span{display:block;font-weight:400;color:var(--ink2);font-size:13px;margin-top:2px}
+label{display:block;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+      color:var(--mut);margin-bottom:6px}
+input[type=text],input[type=tel],input[type=search],select,textarea{
+  width:100%;padding:13px 14px;border:1px solid var(--line2);border-radius:var(--r-sm);
+  background:var(--raised);
+}
+input:focus,select:focus,textarea:focus{background:var(--paper)}
+input::placeholder{color:#AEAEA4}
+.field+.field,.grid2+.field,.field+.grid2,.grid2+.grid2{margin-top:13px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:11px;align-items:start}
 
-/* --- lists --- */
-.list{display:grid;gap:0;margin-top:14px;background:var(--paper);
-      border:1px solid var(--hair2);border-radius:11px;overflow:hidden}
-.line{display:flex;align-items:flex-start;gap:11px;padding:13px 15px}
-.line+.line{border-top:1px solid var(--hair)}
-.line .no{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--mut);
-          width:52px;flex:none;padding-top:2px}
-.line .mid{flex:1;min-width:0}
-.line .nm{font-size:14.5px;font-weight:500}
-.line .mt{font-size:12.5px;color:var(--mut);margin-top:1px}
-.line .pr{font-size:15px;font-weight:600;text-align:right;white-space:nowrap}
-.line .x{background:none;border:0;color:var(--mut);font-size:20px;cursor:pointer;
-         padding:0 0 0 6px;line-height:1;width:auto}
-.line .x:hover{color:var(--warn)}
-.empty{padding:22px 16px;text-align:center;color:var(--mut);font-size:14px}
+/* Money input: the $ sits inside the field so the number owns the space. */
+.money-in{position:relative}
+.money-in span{position:absolute;left:14px;top:50%;transform:translateY(-50%);
+               font-size:19px;font-weight:600;color:var(--mut);pointer-events:none}
+.money-in input{padding-left:31px;font-size:19px;font-weight:650;letter-spacing:-.01em}
 
-/* --- keypad --- */
+/* ---- the register band -------------------------------------------------- */
+.band{background:var(--band);color:#fff;border-radius:var(--r-lg);padding:16px 17px;
+      box-shadow:var(--sh-band)}
+.band .k{font-size:9.5px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;
+         color:rgba(255,255,255,.5)}
+.band .digits{font-family:var(--mono);font-size:37px;font-weight:700;letter-spacing:.14em;
+              margin-top:7px;line-height:1.05}
+.band .digits .ph{color:rgba(255,255,255,.22)}
+.band .echo{margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.14);font-size:14px}
+.band .echo b{font-weight:650}
+.band .echo .amt{float:right;font-weight:680}
+.band .echo.bad{color:#F3A48C}
+.band .stackline{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.band .stackline .v{font-size:15.5px;font-weight:650;letter-spacing:-.01em;margin-top:3px}
+.band .chip{border:1px solid rgba(255,255,255,.3);background:transparent;color:#fff;
+            border-radius:var(--r-pill);font-size:13px;font-weight:600;padding:8px 14px;cursor:pointer;flex:none}
+.band .chip:hover{background:rgba(255,255,255,.1)}
+
+/* ---- keypad ------------------------------------------------------------- */
 .pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
-.key{background:var(--paper);border:1px solid var(--hair2);border-radius:9px;
-     font-size:21px;font-weight:500;color:var(--ink);padding:15px 0;cursor:pointer}
-.key:hover{background:var(--field)}
-.key.sm{font-size:13.5px;font-weight:600;color:var(--mut)}
+.key{background:var(--paper);border:1px solid var(--line2);border-radius:var(--r-md);
+     font-size:23px;font-weight:600;padding:17px 0;cursor:pointer;box-shadow:var(--sh-1);
+     transition:transform .06s ease,background .12s ease}
+.key:active{transform:translateY(1px);background:var(--raised)}
+.key.sm{font-size:14px;font-weight:650;color:var(--mut)}
 
-/* --- deal math --- */
-.deal{margin-top:14px;padding:15px 16px;border:1px solid var(--hair2);border-radius:11px;background:var(--paper)}
-.dl{display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px}
+/* ---- lists -------------------------------------------------------------- */
+.list{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-lg);
+      overflow:hidden;box-shadow:var(--sh-1)}
+.row{display:flex;align-items:center;gap:12px;padding:13px 15px;width:100%;
+     background:none;border:0;text-align:left;font-size:inherit}
+.row+.row{border-top:1px solid var(--line)}
+button.row{cursor:pointer}
+button.row:hover{background:var(--raised)}
+.row .num{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--ink2);
+          background:var(--bg);border:1px solid var(--line);border-radius:6px;
+          padding:5px 7px;flex:none;letter-spacing:.04em}
+.row .mid{flex:1;min-width:0}
+/* These are spans, and ellipsis does nothing on an inline box — without
+   display:block a long title overflows into the amount column and is then
+   silently clipped by .list's overflow:hidden, taking the price off screen. */
+.row .t{display:block;font-size:14.5px;font-weight:550;
+        overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .s{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--mut);margin-top:3px;
+        overflow:hidden;white-space:nowrap}
+.row .s .ctx{overflow:hidden;text-overflow:ellipsis}
+.row .amt{display:block;font-size:15.5px;font-weight:650;text-align:right;
+          white-space:nowrap;flex:none}
+.row .amt .was{display:block;font-size:11.5px;font-weight:500;color:var(--mut);
+               text-decoration:line-through}
+.row .x{background:none;border:0;color:var(--line2);font-size:21px;line-height:1;
+        padding:4px 0 4px 6px;cursor:pointer;flex:none;width:auto}
+.row .x:hover{color:var(--alert)}
+.thumb{width:42px;height:42px;border-radius:var(--r-sm);object-fit:cover;flex:none;
+       border:1px solid var(--line2);background:var(--bg)}
+
+.pill{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.08em;
+      text-transform:uppercase;padding:3px 8px;border-radius:var(--r-pill);
+      border:1px solid var(--line2);color:var(--mut);background:var(--bg)}
+.pill.sold{color:var(--money);background:var(--money-soft);border-color:var(--money-line)}
+.pill.unpriced{color:var(--alert);background:var(--alert-soft);border-color:var(--alert-line)}
+
+.empty{padding:30px 20px;text-align:center}
+.empty .t{font-size:15px;font-weight:600}
+.empty .s{font-size:13.5px;color:var(--mut);margin-top:4px;max-width:34ch;margin-inline:auto}
+
+/* ---- feedback ----------------------------------------------------------- */
+.flash{display:flex;gap:10px;padding:13px 14px;border-radius:var(--r-md);font-size:14px;margin-top:12px}
+.flash .b{font-weight:650}
+.flash .s{color:var(--ink2);font-weight:400;font-size:12.5px;margin-top:2px}
+.flash.ok{background:var(--money-soft);border:1px solid var(--money-line);color:var(--money)}
+.flash.bad{background:var(--alert-soft);border:1px solid var(--alert-line);color:var(--alert)}
+
+/* ---- deal math ---------------------------------------------------------- */
+.deal{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-lg);
+      padding:16px 17px;box-shadow:var(--sh-2);margin-top:12px}
+.dl{display:flex;justify-content:space-between;gap:12px;font-size:14px}
+.dl+.dl{margin-top:7px}
 .dl.b{color:var(--mut)}
-.dial{margin-top:13px;padding-top:13px;border-top:1px solid var(--hair)}
-.dial .top{display:flex;justify-content:space-between;align-items:baseline}
-.dial .pct{font-size:13px;color:var(--mut);font-weight:500}
-.dial .amt{font-size:27px;font-weight:600;letter-spacing:-.02em}
-input[type=range]{width:100%;margin:10px 0 0;accent-color:#0D0D0D;height:26px}
-.floorline{display:flex;justify-content:space-between;font-size:13px;margin-top:9px}
-.floorline .good{color:var(--ok);font-weight:600}
-.floorline .bad{color:var(--warn);font-weight:600}
+.dial{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.dial .top{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.dial .pct{font-size:13px;font-weight:600;color:var(--mut)}
+.dial .amt{font-size:34px;font-weight:700;letter-spacing:-.035em;line-height:1}
+input[type=range]{width:100%;margin:12px 0 0;accent-color:var(--ink);height:28px}
+.floorline{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;margin-top:10px;
+           padding-top:10px;border-top:1px solid var(--line)}
+.floorline .good{color:var(--money);font-weight:650}
+.floorline .bad{color:var(--alert);font-weight:650}
 
-.evidence{display:block;margin-top:8px;font-size:13.5px;color:var(--ink);
-          text-decoration:none;border-bottom:1px solid var(--hair2);width:fit-content}
-.evidence:hover{border-color:var(--ink)}
-.claim{font-size:11.5px;color:var(--mut);margin-top:6px}
+.evidence{display:flex;align-items:center;justify-content:space-between;gap:10px;
+          margin-top:12px;padding:13px 14px;border:1px solid var(--line2);border-radius:var(--r-md);
+          text-decoration:none;color:var(--ink);font-size:14.5px;font-weight:600;background:var(--raised)}
+.evidence:hover{border-color:var(--ink);background:var(--paper)}
+.claim{font-size:12px;color:var(--mut);margin-top:8px;line-height:1.45}
 
-.sticky{position:sticky;bottom:0;background:linear-gradient(to top,var(--bg) 72%,transparent);
-        padding:14px 0 6px;margin-top:16px}
+/* The primary action sits in flow, directly under whatever it acts on.
+   Pinning it to the viewport put it on top of the dial and the floor line
+   whenever the panel ran past the fold — covering the exact numbers being
+   adjusted with a buyer waiting. Measured, not assumed: at scroll-top the
+   pinned button's box started at y=706 and the dial amount at y=720. */
+.sticky{margin-top:14px}
+
+/* ---- tab bar ------------------------------------------------------------ */
+.tabbar{
+  position:fixed;left:0;right:0;bottom:0;z-index:10;
+  background:rgba(255,255,255,.93);backdrop-filter:saturate(1.6) blur(14px);
+  border-top:1px solid var(--line2);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.tabbar .inner{max-width:600px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+.tabbar button{
+  background:none;border:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;
+  gap:4px;padding:9px 4px 10px;color:var(--mut);font-size:10.5px;font-weight:650;letter-spacing:.02em;
+  height:var(--tabbar-h);justify-content:center;
+}
+.tabbar button svg{width:23px;height:23px;stroke-width:1.7}
+.tabbar button[aria-current="page"]{color:var(--ink)}
+.tabbar button[aria-current="page"] svg{stroke-width:2.2}
+.tabbar .dot{position:absolute;transform:translate(13px,-11px);width:7px;height:7px;
+             border-radius:50%;background:var(--alert)}

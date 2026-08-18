@@ -4,7 +4,7 @@ A number-keyed, offline-first tool for sports card show dealers. Price your show
 
 Strictly seller-side. No marketplace. Free to run.
 
-**Status: building.** The app runs — the three-step flow is implemented, the money math and the integrity rule are under test, and it installs to the home screen. Records are local to the device; Firestore sync is not wired yet (see Known gaps).
+**Status: building.** The app runs — four screens, the money math and the integrity rule under test, installable to the home screen. Records are local to the device; Firestore sync is not wired yet (see Known gaps).
 
 ---
 
@@ -12,7 +12,17 @@ Strictly seller-side. No marketplace. Free to run.
 
 Cards carry a plain number sticker — nothing else. The price lives in the app, so stickers never go stale and repricing is a database edit instead of a re-sticker job. At home on wifi you scan the stack with your phone, declare what the camera can't read (year, product, parallel), check real eBay sold listings, and set your price. At the show you type the numbers off the stickers, and the app does the deal math offline. At close you get card-level books and a count of what should still be in the case.
 
-## The three steps
+## The four screens
+
+**Cards** — the book. Declare a stack once, enter cards against it (number + name), then price them: a link to real eBay sold listings, your price, an optional floor. Filter by unpriced / in case / sold, search by name or number.
+
+**Show** — the register, offline. Type the number off the sticker; the name and price come back as a typo guard. Running total, percent-of-price dial, floor warning before a bundle drops, mark sold.
+
+**Sales** — the record. What was taken against what was asked, the day log card by card (ask → realized), and the case audit against a physical count.
+
+**Receipts** — money out. Table fees, travel, cards you bought. Photograph the paper slip or type it; expenses net against sales so a show has a real profit number.
+
+## The workflow behind them
 
 **1 — Night before (home, wifi).** Declare the stack. Scan each card: the camera reads the sticker number and the printed name, the title composes from the stack declaration. Then the price pass — tap through to real eBay sold listings, eyeball the last handful, type your price, and optionally a floor.
 

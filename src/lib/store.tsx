@@ -29,6 +29,9 @@ export function load(): DB {
       stacks: parsed.stacks ?? [],
       cards: parsed.cards ?? [],
       deals: parsed.deals ?? [],
+      // Optional-first: a record written before receipts existed reads as a
+      // book with no expenses, and behaves exactly as it did before.
+      receipts: parsed.receipts ?? [],
     };
   } catch {
     return EMPTY_DB;
