@@ -2,3 +2,9 @@ node_modules/
 dist/
 *.local
 .DS_Store
+
+# Firebase emulator artifacts — regenerated on every `npm run test:rules` run
+firestore-debug.log
+firebase-debug.log
+ui-debug.log
+.firebase/
