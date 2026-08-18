@@ -44,3 +44,16 @@ describe('compsUrl', () => {
     expect(url).not.toContain('%20');
   });
 });
+
+describe('compsUrl without a group', () => {
+  it('still builds a usable search from the printed name alone', () => {
+    const decoded = decodeURIComponent(compsUrl(undefined, 'Anthony Edwards').replace(/\+/g, ' '));
+    expect(decoded).toContain('Anthony Edwards');
+  });
+
+  it('keeps the sold, singles and negative-keyword filters with no group', () => {
+    const url = compsUrl(undefined, 'Anthony Edwards');
+    expect(url).toContain('LH_Sold=1');
+    expect(url).toContain(`_sacat=${SINGLES_CATEGORY}`);
+  });
+});

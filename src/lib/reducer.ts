@@ -7,16 +7,17 @@
  * generated here, so every transition is reproducible in a test.
  */
 import type { Card, DB, Deal, DealLine, ExpenseCategory, Receipt, Stack } from '../types';
-import { isDuplicate } from './numbers';
+import { isDuplicate, isValidNumber } from './numbers';
 import { splitByWeight, sumAsks } from './money';
-import { composeTitle } from './title';
+import { cardLabel } from './title';
 import { mergeDb } from './sync/merge-db';
 
 export type Action =
   | { type: 'stack/add'; id: string; year: string; product: string; parallel: string; now: string }
-  | { type: 'card/add'; id: string; stackId: string; number: string; name: string; cardNumber?: string; now: string }
+  | { type: 'card/add'; id: string; stackId?: string; number: string; name: string; cardNumber?: string; now: string }
   | { type: 'card/price'; cardId: string; priceCents: number; floorCents?: number; now: string }
-  | { type: 'card/edit'; cardId: string; number?: string; name?: string; cardNumber?: string; now: string }
+  /** stackId: a string assigns a group, null removes one, undefined leaves it. */
+  | { type: 'card/edit'; cardId: string; number?: string; name?: string; cardNumber?: string; stackId?: string | null; now: string }
   | { type: 'receipt/add'; id: string; amountCents: number; category: ExpenseCategory; note: string; photoId?: string; now: string }
   | { type: 'receipt/delete'; id: string; now: string }
   | { type: 'deal/record'; id: string; cardIds: string[]; agreedCents: number; now: string }
@@ -41,6 +42,10 @@ export function reducer(db: DB, action: Action): DB {
     }
 
     case 'card/add': {
+      // The sticker number IS the card's identity — everything else can be
+      // filled in later, but a card without one cannot be looked up at the table.
+      if (!isValidNumber(action.number)) return db;
+
       // The integrity rule, enforced at the write path rather than in the UI —
       // a screen can forget to check, this cannot.
       if (isDuplicate(db.cards, action.number)) return db;
@@ -89,6 +94,8 @@ export function reducer(db: DB, action: Action): DB {
                 number,
                 name: action.name ?? c.name,
                 cardNumber: action.cardNumber ?? c.cardNumber,
+                // null is an explicit "no group"; undefined means leave it be.
+                stackId: action.stackId === null ? undefined : (action.stackId ?? c.stackId),
                 updatedAt: action.now,
               }
             : c,
@@ -136,7 +143,7 @@ export function reducer(db: DB, action: Action): DB {
           cardId: c.id,
           number: c.number,
           // Snapshot: a later reprice must not rewrite what this deal was.
-          title: stack ? composeTitle(stack, c.name, c.cardNumber) : c.name,
+          title: cardLabel(c, stack),
           askCents: asks[i] ?? 0,
           realizedCents: parts[i] ?? 0,
         };

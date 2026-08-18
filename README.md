@@ -14,7 +14,9 @@ Cards carry a plain number sticker — nothing else. The price lives in the app,
 
 ## The four screens
 
-**Cards** — the book. Declare a stack once, enter cards against it (number + name), then price them: a link to real eBay sold listings, your price, an optional floor. Filter by unpriced / in case / sold, search by name or number.
+**Cards** — the book. Type the sticker number and the card exists; that is the only required field. Name, group and price are filled in afterwards, from the card's own screen: a link to real eBay sold listings, your price, an optional floor. Filter by unpriced / in case / sold, search by name or number.
+
+**Groups are optional and opt-in.** A group supplies year, product and parallel to every card in it, so titles compose themselves — but nothing needs one, they appear only once you create one, and a card can be moved in or out at any time.
 
 **Show** — the register, offline. Type the number off the sticker; the name and price come back as a typo guard. Running total, percent-of-price dial, floor warning before a bundle drops, mark sold.
 
@@ -24,7 +26,7 @@ Cards carry a plain number sticker — nothing else. The price lives in the app,
 
 ## The workflow behind them
 
-**1 — Night before (home, wifi).** Declare the stack. Scan each card: the camera reads the sticker number and the printed name, the title composes from the stack declaration. Then the price pass — tap through to real eBay sold listings, eyeball the last handful, type your price, and optionally a floor.
+**1 — Night before (home, wifi).** Enter the stack: peel a number, stick it on the sleeve, type it in, next. Nothing else is required. Optionally declare a group so year, product and parallel compose into every title. Then the price pass — tap through to real eBay sold listings, eyeball the last handful, type your price, and optionally a floor.
 
 **2 — Show day (phone, offline).** Type the pulled numbers. Each one echoes the card name as a typo guard. Running total, deal math, floor warnings before a bundle drops under what you'd take. Trades value both sides with a spread. Mark sold.
 

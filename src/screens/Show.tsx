@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Route } from '../App';
 import { useStore, newId, nowIso } from '../lib/store';
 import { findByNumber } from '../lib/numbers';
-import { composeTitle } from '../lib/title';
+import { cardLabel } from '../lib/title';
 import { formatCents, pctOf, sumAsks } from '../lib/money';
 import { checkFloors } from '../lib/floors';
 import type { Card } from '../types';
@@ -118,7 +118,9 @@ export function Show({ go }: { go: (r: Route) => void }) {
           <div className={`echo${match ? '' : ' bad'}`}>
             {match ? (
               <>
-                <b>{match.name}</b>
+                {/* The typo guard has to say something even for a card entered
+                    with only its number, or it guards nothing. */}
+                <b>{cardLabel(match, db.stacks.find((s) => s.id === match.stackId))}</b>
                 {alreadyInCart && <span className="muted"> · already on this deal</span>}
                 <span className="amt">{formatCents(match.priceCents ?? 0)}</span>
               </>
@@ -163,7 +165,7 @@ export function Show({ go }: { go: (r: Route) => void }) {
             <div className="row" key={c.id}>
               <span className="num">{c.number}</span>
               <span className="mid">
-                <span className="t">{stack ? composeTitle(stack, c.name, c.cardNumber) : c.name}</span>
+                <span className="t">{cardLabel(c, stack)}</span>
                 {c.floorCents != null && (
                   <span className="s">Floor {formatCents(c.floorCents)}</span>
                 )}

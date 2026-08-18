@@ -185,3 +185,53 @@ describe('receipt/delete — tombstones, not holes', () => {
     expect(db.receipts[0]!.updatedAt).toBe(LATER);
   });
 });
+
+describe('card/add without a group — the day-one path', () => {
+  it('accepts a card with nothing but a sticker number', () => {
+    const db = reducer(EMPTY_DB, {
+      type: 'card/add', id: 'c1', number: '0455', name: '', now: NOW,
+    });
+    expect(db.cards).toHaveLength(1);
+    expect(db.cards[0]!.stackId).toBeUndefined();
+    expect(db.cards[0]!.status).toBe('unpriced');
+  });
+
+  it('still blocks a duplicate number when no group is involved', () => {
+    let db = reducer(EMPTY_DB, { type: 'card/add', id: 'c1', number: '0455', name: '', now: NOW });
+    db = reducer(db, { type: 'card/add', id: 'c2', number: '0455', name: '', now: NOW });
+    expect(db.cards).toHaveLength(1);
+  });
+
+  it('refuses a card with no sticker number at all — the number IS the card', () => {
+    expect(reducer(EMPTY_DB, {
+      type: 'card/add', id: 'c1', number: '', name: 'Someone', now: NOW,
+    }).cards).toHaveLength(0);
+  });
+});
+
+describe('card/edit — filling in what was skipped', () => {
+  it('assigns a group to a card entered without one', () => {
+    let db = reducer(EMPTY_DB, {
+      type: 'stack/add', id: 's1', year: '2023', product: 'Prizm', parallel: 'Base', now: NOW,
+    });
+    db = reducer(db, { type: 'card/add', id: 'c1', number: '0455', name: '', now: NOW });
+    db = reducer(db, { type: 'card/edit', cardId: 'c1', stackId: 's1', now: NOW });
+    expect(db.cards[0]!.stackId).toBe('s1');
+  });
+
+  it('takes a card back OUT of a group', () => {
+    let db = reducer(EMPTY_DB, {
+      type: 'stack/add', id: 's1', year: '2023', product: 'Prizm', parallel: 'Base', now: NOW,
+    });
+    db = reducer(db, { type: 'card/add', id: 'c1', stackId: 's1', number: '0455', name: '', now: NOW });
+    db = reducer(db, { type: 'card/edit', cardId: 'c1', stackId: null, now: NOW });
+    expect(db.cards[0]!.stackId).toBeUndefined();
+  });
+
+  it('adds the name later without disturbing the number', () => {
+    let db = reducer(EMPTY_DB, { type: 'card/add', id: 'c1', number: '0455', name: '', now: NOW });
+    db = reducer(db, { type: 'card/edit', cardId: 'c1', name: 'Anthony Edwards', now: NOW });
+    expect(db.cards[0]!.name).toBe('Anthony Edwards');
+    expect(db.cards[0]!.number).toBe('0455');
+  });
+});

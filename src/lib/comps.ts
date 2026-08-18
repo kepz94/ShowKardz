@@ -27,8 +27,13 @@ function encodeQuery(q: string): string {
   return encodeURIComponent(q).replace(/%20/g, '+');
 }
 
-/** A link to real sold listings for this card. Never a number, always a link. */
-export function compsUrl(stack: Stack, name: string, cardNumber?: string): string {
+/**
+ * A link to real sold listings for this card. Never a number, always a link.
+ *
+ * A card with no group still gets a usable search — the printed name is what a
+ * buyer would type anyway; the group just narrows it.
+ */
+export function compsUrl(stack: Stack | undefined, name: string, cardNumber?: string): string {
   const keywords = `${composeTitle(stack, name, cardNumber)} ${NEGATIVE_KEYWORDS}`;
   return (
     `https://www.ebay.com/sch/i.html?_nkw=${encodeQuery(keywords)}` +

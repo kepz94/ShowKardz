@@ -52,11 +52,19 @@ export interface Card {
   id: string;
   /** The sticker number, as typed. Digits only, no leading-zero normalization. */
   number: string;
-  /** Player or subject name, read off the card (v1: typed). */
+  /**
+   * Player or subject name, read off the card (v1: typed). May be empty — a
+   * card can be entered with nothing but its sticker number and named later.
+   */
   name: string;
   /** Card number printed on the card itself, e.g. "58". Optional. */
   cardNumber?: string;
-  stackId: string;
+  /**
+   * The group this card was entered under, if any. Optional by design: intake
+   * is number-first, and groups are a thing you turn on later and assign
+   * afterwards. A card with no group carries only what is printed on it.
+   */
+  stackId?: string;
   /** The dealer's asking price, in whole cents. Absent until the price pass. */
   priceCents?: number;
   /** Least the dealer would take, in whole cents. Optional per card. */

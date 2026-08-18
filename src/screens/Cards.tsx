@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useStore, newId, nowIso } from '../lib/store';
 import { isDuplicate, isValidNumber, normalizeNumber } from '../lib/numbers';
 import { composeTitle } from '../lib/title';
@@ -8,42 +8,50 @@ import type { Card, Stack } from '../types';
 
 type Filter = 'all' | 'unpriced' | 'available' | 'sold';
 
+/** How a group reads in a picker. */
+function groupName(stack: Stack): string {
+  return [stack.year, stack.product, stack.parallel.toLowerCase() === 'base' ? '' : stack.parallel]
+    .filter(Boolean)
+    .join(' ') || 'Untitled group';
+}
+
 export function Cards() {
   const { db } = useStore();
-  const stack = db.stacks[db.stacks.length - 1];
-  const [editing, setEditing] = useState<Card | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
   const [declaring, setDeclaring] = useState(false);
 
-  if (!stack || declaring) {
-    return <DeclareStack existing={stack} onDone={() => setDeclaring(false)} />;
-  }
+  if (declaring) return <DeclareGroup onDone={() => setDeclaring(false)} />;
+
   if (editing) {
-    const live = db.cards.find((c) => c.id === editing.id);
-    if (live) return <CardDetail card={live} onDone={() => setEditing(null)} />;
+    const live = db.cards.find((c) => c.id === editing);
+    if (live) {
+      return <CardDetail card={live} onDone={() => setEditing(null)}
+                         onNewGroup={() => setDeclaring(true)} />;
+    }
   }
-  return <CardList stack={stack} onEdit={setEditing} onChangeStack={() => setDeclaring(true)} />;
+  return <CardList onEdit={setEditing} onNewGroup={() => setDeclaring(true)} />;
 }
 
 /* -------------------------------------------------------------------------- */
 
-function DeclareStack({ existing, onDone }: { existing?: Stack; onDone: () => void }) {
+function DeclareGroup({ onDone }: { onDone: () => void }) {
   const { dispatch } = useStore();
-  const [year, setYear] = useState(existing?.year ?? '');
-  const [product, setProduct] = useState(existing?.product ?? '');
-  const [parallel, setParallel] = useState(existing?.parallel ?? 'Base');
+  const [year, setYear] = useState('');
+  const [product, setProduct] = useState('');
+  const [parallel, setParallel] = useState('Base');
 
   return (
     <>
       <header className="screen-head">
         <div>
           <div className="eb">Cards</div>
-          <h1>Declare the stack</h1>
+          <h1>New group</h1>
         </div>
       </header>
 
       <p className="lede">
-        The camera can only read what is printed. Year, product and parallel are yours to declare
-        once — every card entered under this stack inherits them, so titles compose themselves.
+        A group supplies what the camera cannot read — year, product, parallel — to every card
+        you put in it. Optional: cards work perfectly well without one.
       </p>
 
       <div className="card">
@@ -66,19 +74,17 @@ function DeclareStack({ existing, onDone }: { existing?: Stack; onDone: () => vo
       </div>
 
       <div className="sticky">
-        <button className="btn" disabled={product.trim() === ''} onClick={() => {
-          dispatch({
-            type: 'stack/add', id: newId(), year: year.trim(), product: product.trim(),
-            parallel: parallel.trim() || 'Base', now: nowIso(),
-          });
-          onDone();
-        }}>
-          {existing ? 'Switch to this stack' : 'Start this stack'}
-          <span className="sub">Cards you enter next inherit it</span>
+        <button className="btn" disabled={product.trim() === '' && year.trim() === ''}
+                onClick={() => {
+                  dispatch({
+                    type: 'stack/add', id: newId(), year: year.trim(), product: product.trim(),
+                    parallel: parallel.trim() || 'Base', now: nowIso(),
+                  });
+                  onDone();
+                }}>
+          Create group
         </button>
-        {existing && (
-          <button className="btn ghost sm" style={{ marginTop: 9 }} onClick={onDone}>Cancel</button>
-        )}
+        <button className="btn ghost sm" style={{ marginTop: 9 }} onClick={onDone}>Cancel</button>
       </div>
     </>
   );
@@ -87,16 +93,21 @@ function DeclareStack({ existing, onDone }: { existing?: Stack; onDone: () => vo
 /* -------------------------------------------------------------------------- */
 
 function CardList({
-  stack, onEdit, onChangeStack,
-}: { stack: Stack; onEdit: (c: Card) => void; onChangeStack: () => void }) {
+  onEdit, onNewGroup,
+}: { onEdit: (id: string) => void; onNewGroup: () => void }) {
   const { db, dispatch } = useStore();
   const [number, setNumber] = useState('');
   const [name, setName] = useState('');
+  const [groupId, setGroupId] = useState<string>('');
   const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
+  const [added, setAdded] = useState<string | null>(null);
+  const numberField = useRef<HTMLInputElement>(null);
 
   const dup = isDuplicate(db.cards, number);
-  const ready = isValidNumber(number) && name.trim() !== '' && !dup;
+  // The number is the whole requirement. Name and group are filled in later,
+  // which is what makes a fast intake pass possible: peel, stick, type, next.
+  const ready = isValidNumber(number) && !dup;
 
   const counts = useMemo(() => ({
     all: db.cards.length,
@@ -116,12 +127,16 @@ function CardList({
 
   function add() {
     if (!ready) return;
+    const clean = normalizeNumber(number);
     dispatch({
-      type: 'card/add', id: newId(), stackId: stack.id, number: normalizeNumber(number),
-      name: name.trim(), now: nowIso(),
+      type: 'card/add', id: newId(), number: clean, name: name.trim(),
+      stackId: groupId || undefined, now: nowIso(),
     });
+    setAdded(clean);
     setNumber('');
     setName('');
+    // Straight back to the number field: the next card is already in hand.
+    numberField.current?.focus();
   }
 
   return (
@@ -137,32 +152,33 @@ function CardList({
         </div>
       </header>
 
-      <div className="band">
-        <div className="stackline">
-          <div>
-            <div className="k">Entering under</div>
-            <div className="v">
-              {[stack.year, stack.product, stack.parallel].filter(Boolean).join(' · ')}
-            </div>
-          </div>
-          <button className="chip" onClick={onChangeStack}>Change</button>
+      <div className="card">
+        <div className="field">
+          <label htmlFor="num">Sticker number</label>
+          <input id="num" ref={numberField} type="tel" inputMode="numeric" value={number}
+                 enterKeyHint="done" autoFocus placeholder="0455"
+                 onChange={(e) => { setNumber(e.target.value); setAdded(null); }}
+                 onKeyDown={(e) => e.key === 'Enter' && add()} />
         </div>
-      </div>
 
-      <div className="card" style={{ marginTop: 11 }}>
-        <div className="grid2">
-          <div>
-            <label htmlFor="num">Sticker no.</label>
-            <input id="num" type="tel" inputMode="numeric" value={number}
-                   onChange={(e) => setNumber(e.target.value)} placeholder="0455" />
-          </div>
-          <div>
-            <label htmlFor="name">Name on card</label>
-            <input id="name" type="text" value={name} enterKeyHint="done"
-                   onChange={(e) => setName(e.target.value)} placeholder="Anthony Edwards"
-                   onKeyDown={(e) => e.key === 'Enter' && add()} />
-          </div>
+        <div className="field">
+          <label htmlFor="name">Name <span className="muted">(optional — add it later)</span></label>
+          <input id="name" type="text" value={name} enterKeyHint="done"
+                 onChange={(e) => setName(e.target.value)} placeholder="Anthony Edwards"
+                 onKeyDown={(e) => e.key === 'Enter' && add()} />
         </div>
+
+        {db.stacks.length > 0 && (
+          <div className="field">
+            <label htmlFor="grp">Group</label>
+            <select id="grp" value={groupId} onChange={(e) => setGroupId(e.target.value)}>
+              <option value="">No group</option>
+              {db.stacks.map((s) => (
+                <option key={s.id} value={s.id}>{groupName(s)}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {dup && (
           <div className="flash bad">
@@ -172,10 +188,29 @@ function CardList({
             </div>
           </div>
         )}
+        {added && !dup && number === '' && (
+          <div className="flash ok">
+            <div>
+              <div className="b">{added} added</div>
+              <div className="s">Price it and fill in the rest whenever you like.</div>
+            </div>
+          </div>
+        )}
 
-        <button className="btn sm" style={{ marginTop: 12 }} disabled={!ready} onClick={add}>
+        <button className="btn" style={{ marginTop: 13 }} disabled={!ready} onClick={add}>
           Add card
+          <span className="sub">The number is all it needs</span>
         </button>
+
+        <button className="btn ghost sm" style={{ marginTop: 9 }} onClick={onNewGroup}>
+          {db.stacks.length === 0 ? 'Use groups' : 'New group'}
+        </button>
+        {db.stacks.length === 0 && (
+          <p className="claim">
+            Groups fill in year, product and parallel for a whole stack at once. Turn them on
+            when you want them — nothing needs one.
+          </p>
+        )}
       </div>
 
       <h2>
@@ -205,26 +240,26 @@ function CardList({
             <div className="t">{counts.all === 0 ? 'Nothing entered yet' : 'Nothing here'}</div>
             <div className="s">
               {counts.all === 0
-                ? 'Peel a number, stick it on the sleeve, and type it in above.'
+                ? 'Peel a number, stick it on the sleeve, type it in. Everything else can wait.'
                 : 'No card matches this filter.'}
             </div>
           </div>
         ) : shown.map((c) => {
-          const cardStack = db.stacks.find((s) => s.id === c.stackId);
+          const stack = db.stacks.find((s) => s.id === c.stackId);
           return (
-            <button className="row" key={c.id} onClick={() => onEdit(c)}>
+            <button className="row" key={c.id} onClick={() => onEdit(c.id)}>
               <span className="num">{c.number}</span>
               <span className="mid">
-                <span className="t">{c.name}{c.cardNumber ? ` · ${c.cardNumber}` : ''}</span>
+                {/* The number is already in the chip beside this, so an
+                    unnamed card says what is MISSING rather than repeating it. */}
+                <span className={`t${c.name.trim() === '' && !stack ? ' muted' : ''}`}>
+                  {c.name.trim() !== '' ? c.name : stack ? groupName(stack) : 'Unnamed'}
+                </span>
                 <span className="s">
                   {c.status === 'unpriced' && <span className="pill unpriced">Unpriced</span>}
                   {c.status === 'sold' && <span className="pill sold">Sold</span>}
                   <span className="ctx">
-                    {cardStack
-                      ? [cardStack.year, cardStack.product,
-                         cardStack.parallel.toLowerCase() === 'base' ? '' : cardStack.parallel]
-                          .filter(Boolean).join(' ')
-                      : ''}
+                    {stack ? groupName(stack) : c.name.trim() === '' ? 'Tap to fill in' : ''}
                     {c.status === 'available' && c.floorCents != null
                       && ` · floor ${formatCents(c.floorCents)}`}
                   </span>
@@ -248,33 +283,40 @@ function CardList({
 
 /* -------------------------------------------------------------------------- */
 
-function CardDetail({ card, onDone }: { card: Card; onDone: () => void }) {
+function CardDetail({
+  card, onDone, onNewGroup,
+}: { card: Card; onDone: () => void; onNewGroup: () => void }) {
   const { db, dispatch } = useStore();
-  const stack = db.stacks.find((s) => s.id === card.stackId);
 
   const [name, setName] = useState(card.name);
   const [cardNumber, setCardNumber] = useState(card.cardNumber ?? '');
+  const [groupId, setGroupId] = useState(card.stackId ?? '');
   const [price, setPrice] = useState(card.priceCents != null ? centsToInput(card.priceCents) : '');
   const [floor, setFloor] = useState(card.floorCents != null ? centsToInput(card.floorCents) : '');
 
+  const stack = db.stacks.find((s) => s.id === groupId);
   const priceCents = dollarsToCents(price);
   const floorCents = floor.trim() === '' ? null : dollarsToCents(floor);
   const floorTooHigh = floorCents != null && priceCents != null && floorCents > priceCents;
-  const canSave = priceCents != null && priceCents > 0 && !floorTooHigh && name.trim() !== '';
+  // A price is not required to save — naming or grouping a card is reason enough.
+  const canSave = !floorTooHigh && (price.trim() === '' || (priceCents != null && priceCents > 0));
 
-  const title = stack ? composeTitle(stack, name || card.name, cardNumber || undefined) : card.name;
+  const title = composeTitle(stack, name, cardNumber || undefined);
 
   function save() {
     if (!canSave) return;
     const now = nowIso();
     dispatch({
       type: 'card/edit', cardId: card.id, name: name.trim(),
-      cardNumber: cardNumber.trim() || undefined, now,
+      cardNumber: cardNumber.trim() || undefined,
+      stackId: groupId === '' ? null : groupId, now,
     });
-    dispatch({
-      type: 'card/price', cardId: card.id, priceCents,
-      floorCents: floorCents ?? undefined, now,
-    });
+    if (priceCents != null && priceCents > 0) {
+      dispatch({
+        type: 'card/price', cardId: card.id, priceCents,
+        floorCents: floorCents ?? undefined, now,
+      });
+    }
     onDone();
   }
 
@@ -283,7 +325,7 @@ function CardDetail({ card, onDone }: { card: Card; onDone: () => void }) {
       <header className="screen-head">
         <div>
           <div className="eb">Card {card.number}</div>
-          <h1>{card.status === 'unpriced' ? 'Set a price' : 'Edit card'}</h1>
+          <h1>{card.status === 'unpriced' ? 'Fill it in' : 'Edit card'}</h1>
         </div>
         <div className="aside">
           <button className="btn ghost sm" onClick={onDone} style={{ width: 'auto' }}>Done</button>
@@ -302,26 +344,42 @@ function CardDetail({ card, onDone }: { card: Card; onDone: () => void }) {
       <div className="card">
         <div className="field">
           <label htmlFor="d-name">Name on card</label>
-          <input id="d-name" type="text" value={name} onChange={(e) => setName(e.target.value)} />
+          <input id="d-name" type="text" value={name} placeholder="Anthony Edwards"
+                 onChange={(e) => setName(e.target.value)} />
         </div>
         <div className="field">
           <label htmlFor="d-cn">Card number <span className="muted">(optional)</span></label>
           <input id="d-cn" type="text" inputMode="numeric" value={cardNumber}
                  onChange={(e) => setCardNumber(e.target.value)} placeholder="58" />
         </div>
-        <p className="claim">Title: {title}</p>
+        <div className="field">
+          <label htmlFor="d-grp">Group</label>
+          {db.stacks.length === 0 ? (
+            <button className="btn ghost sm" onClick={onNewGroup}>Create a group</button>
+          ) : (
+            <select id="d-grp" value={groupId} onChange={(e) => setGroupId(e.target.value)}>
+              <option value="">No group</option>
+              {db.stacks.map((s) => (
+                <option key={s.id} value={s.id}>{groupName(s)}</option>
+              ))}
+            </select>
+          )}
+        </div>
+        {title !== '' && <p className="claim">Title: {title}</p>}
       </div>
 
-      {stack && (
-        <a className="evidence" href={compsUrl(stack, name || card.name, cardNumber || undefined)}
-           target="_blank" rel="noopener noreferrer">
-          <span>Check real eBay sold listings</span>
-          <span aria-hidden>↗</span>
-        </a>
+      {name.trim() !== '' && (
+        <>
+          <a className="evidence" href={compsUrl(stack, name, cardNumber || undefined)}
+             target="_blank" rel="noopener noreferrer">
+            <span>Check real eBay sold listings</span>
+            <span aria-hidden>↗</span>
+          </a>
+          <p className="claim">
+            Market evidence, not a figure this app can know. Read the last handful, then set yours.
+          </p>
+        </>
       )}
-      <p className="claim">
-        Market evidence, not a figure this app can know. Read the last handful, then set yours.
-      </p>
 
       <div className="card" style={{ marginTop: 14 }}>
         <div className="grid2">
@@ -350,13 +408,20 @@ function CardDetail({ card, onDone }: { card: Card; onDone: () => void }) {
             </div>
           </div>
         )}
+        {card.status === 'unpriced' && price.trim() === '' && (
+          <p className="claim">
+            A card needs a price before it can be sold. You can leave it and come back.
+          </p>
+        )}
       </div>
 
       <div className="sticky">
         <button className="btn money" disabled={!canSave} onClick={save}>
           Save {priceCents ? formatCents(priceCents) : ''}
           <span className="sub">
-            {card.status === 'unpriced' ? 'Puts it in the case, ready to sell' : 'Stickers are unaffected'}
+            {card.status === 'unpriced' && priceCents
+              ? 'Puts it in the case, ready to sell'
+              : 'Stickers are unaffected'}
           </span>
         </button>
       </div>
