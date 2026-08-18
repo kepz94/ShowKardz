@@ -32,23 +32,60 @@ export function fitWithin(width: number, height: number, max: number): Size {
   };
 }
 
-/** Read a camera or file-picker image, shrink it, hand back a storable JPEG. */
+/**
+ * Decode an image file.
+ *
+ * createImageBitmap is the fast path, but it is picky about formats and a photo
+ * library holds whatever the phone has accumulated — screenshots, saved images,
+ * things that arrived over messaging. An <img> element decodes a wider set, so
+ * it stands behind the fast path rather than the upload simply failing.
+ */
+async function decode(file: File): Promise<{
+  source: CanvasImageSource; width: number; height: number; release: () => void;
+}> {
+  try {
+    const bitmap = await createImageBitmap(file);
+    return {
+      source: bitmap, width: bitmap.width, height: bitmap.height,
+      release: () => bitmap.close(),
+    };
+  } catch {
+    const url = URL.createObjectURL(file);
+    try {
+      const img = new Image();
+      img.src = url;
+      await img.decode();
+      return {
+        source: img, width: img.naturalWidth, height: img.naturalHeight,
+        release: () => URL.revokeObjectURL(url),
+      };
+    } catch {
+      URL.revokeObjectURL(url);
+      throw new Error('That file is not an image this device can read');
+    }
+  }
+}
+
+/** Read a photo, screenshot or uploaded image; shrink it; hand back a JPEG. */
 export async function downscale(file: File): Promise<Blob> {
-  const bitmap = await createImageBitmap(file);
-  const { width, height } = fitWithin(bitmap.width, bitmap.height, MAX_EDGE);
+  const decoded = await decode(file);
+  const { width, height } = fitWithin(decoded.width, decoded.height, MAX_EDGE);
 
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
 
   const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('Could not prepare the photo on this device');
-  ctx.drawImage(bitmap, 0, 0, width, height);
-  bitmap.close();
+  if (!ctx) {
+    decoded.release();
+    throw new Error('Could not prepare the image on this device');
+  }
+  ctx.drawImage(decoded.source, 0, 0, width, height);
+  decoded.release();
 
   const blob = await new Promise<Blob | null>((resolve) =>
     canvas.toBlob(resolve, 'image/jpeg', JPEG_QUALITY),
   );
-  if (!blob) throw new Error('Could not prepare the photo on this device');
+  if (!blob) throw new Error('Could not prepare the image on this device');
   return blob;
 }

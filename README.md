@@ -20,7 +20,7 @@ Cards carry a plain number sticker — nothing else. The price lives in the app,
 
 **Sales** — the record. What was taken against what was asked, the day log card by card (ask → realized), and the case audit against a physical count.
 
-**Receipts** — money out. Table fees, travel, cards you bought. Photograph the paper slip or type it; expenses net against sales so a show has a real profit number.
+**Receipts** — money out. Table fees, travel, cards you bought. Photograph a paper slip, or upload a screenshot of a digital receipt from your photos or files; expenses net against sales so a show has a real profit number.
 
 ## The workflow behind them
 

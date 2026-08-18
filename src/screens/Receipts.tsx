@@ -10,6 +10,9 @@ import { readStorage, formatBytes, type StorageReport } from '../lib/storage';
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from '../types';
 
 /** Category → its label. Built as a typed record so every lookup is total. */
+/** Where an attached image came from. Affects wording only. */
+type PhotoSource = 'camera' | 'upload';
+
 const LABELS: Record<ExpenseCategory, string> = EXPENSE_CATEGORIES.reduce(
   (acc, c) => ({ ...acc, [c.value]: c.label }),
   {} as Record<ExpenseCategory, string>,
@@ -21,10 +24,14 @@ export function Receipts() {
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState<ExpenseCategory>('table');
   const [note, setNote] = useState('');
-  const [photo, setPhoto] = useState<{ blob: Blob; url: string } | null>(null);
+  const [photo, setPhoto] = useState<{ blob: Blob; url: string; source: PhotoSource } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const fileInput = useRef<HTMLInputElement>(null);
+  // Two inputs, not one. On iOS the `capture` attribute sends you straight to
+  // the camera with no way to reach the photo library, so a screenshot is
+  // unreachable through a capture input no matter how it is labelled.
+  const cameraInput = useRef<HTMLInputElement>(null);
+  const uploadInput = useRef<HTMLInputElement>(null);
 
   const [storage, setStorage] = useState<StorageReport | null>(null);
 
@@ -41,17 +48,20 @@ export function Receipts() {
 
   const receipts = liveReceipts(db.receipts).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
-  async function attach(file: File) {
+  async function attach(file: File, source: PhotoSource) {
     setBusy(true);
     setError(null);
     try {
-      // Shrink before anything is held: a raw camera shot is several megabytes
-      // and none of that detail is needed to read a slip of paper.
+      // Shrink before anything is held: a camera shot is several megabytes and
+      // a full-resolution screenshot is not much better, and none of that
+      // detail is needed to read a total off a receipt.
       const blob = await downscale(file);
       if (photo) URL.revokeObjectURL(photo.url);
-      setPhoto({ blob, url: URL.createObjectURL(blob) });
-    } catch {
-      setError('That photo could not be read. Try again, or file the amount without it.');
+      setPhoto({ blob, url: URL.createObjectURL(blob), source });
+    } catch (err) {
+      setError(err instanceof Error
+        ? `${err.message}. File the amount without it, or try a different file.`
+        : 'That image could not be read. File the amount without it.');
     } finally {
       setBusy(false);
     }
@@ -84,8 +94,14 @@ export function Receipts() {
     setPhoto(null);
     setAmount('');
     setNote('');
-    if (fileInput.current) fileInput.current.value = '';
+    clearInputs();
     setBusy(false);
+  }
+
+  /** Reset both pickers, or re-choosing the same file fires no change event. */
+  function clearInputs() {
+    if (cameraInput.current) cameraInput.current.value = '';
+    if (uploadInput.current) uploadInput.current.value = '';
   }
 
   function remove(id: string, photoId?: string) {
@@ -149,33 +165,55 @@ export function Receipts() {
                  placeholder="Saturday table, hall B" />
         </div>
 
-        {/* capture="environment" opens the rear camera straight from the sheet
-            on iOS, while still allowing a pick from the library. */}
-        <input ref={fileInput} type="file" accept="image/*" capture="environment"
+        {/* capture="environment" goes straight to the rear camera. */}
+        <input ref={cameraInput} type="file" accept="image/*" capture="environment"
                style={{ display: 'none' }} aria-hidden tabIndex={-1}
                onChange={(e) => {
                  const file = e.target.files?.[0];
-                 if (file) void attach(file);
+                 if (file) void attach(file, 'camera');
+               }} />
+        {/* No capture attribute, so iOS offers Photo Library and Files — which
+            is where a screenshot or an emailed receipt actually lives. */}
+        <input ref={uploadInput} type="file" accept="image/*"
+               style={{ display: 'none' }} aria-hidden tabIndex={-1}
+               onChange={(e) => {
+                 const file = e.target.files?.[0];
+                 if (file) void attach(file, 'upload');
                }} />
 
         {photo ? (
           <div className="row" style={{ padding: '12px 0 0' }}>
             <img className="thumb" src={photo.url} alt="The receipt you just photographed" />
             <span className="mid">
-              <span className="t">Photo attached</span>
-              <span className="s">Filed with this expense</span>
+              <span className="t">
+                {photo.source === 'camera' ? 'Photo attached' : 'Image attached'}
+              </span>
+              <span className="s">
+                <span className="ctx">Filed with this expense</span>
+              </span>
             </span>
-            <button className="x" aria-label="Remove photo" onClick={() => {
+            <button className="x" aria-label="Remove image" onClick={() => {
               URL.revokeObjectURL(photo.url);
               setPhoto(null);
-              if (fileInput.current) fileInput.current.value = '';
+              clearInputs();
             }}>×</button>
           </div>
         ) : (
-          <button className="btn ghost sm" style={{ marginTop: 12 }} disabled={busy}
-                  onClick={() => fileInput.current?.click()}>
-            {busy ? 'Working…' : 'Photograph the receipt'}
-          </button>
+          <div className="grid2" style={{ marginTop: 13 }}>
+            <button className="btn ghost sm" disabled={busy}
+                    onClick={() => cameraInput.current?.click()}>
+              {busy ? 'Working…' : 'Take photo'}
+            </button>
+            <button className="btn ghost sm" disabled={busy}
+                    onClick={() => uploadInput.current?.click()}>
+              {busy ? 'Working…' : 'Upload image'}
+            </button>
+          </div>
+        )}
+        {!photo && (
+          <p className="claim">
+            A paper slip, or a screenshot of a digital receipt from your photos or files.
+          </p>
         )}
 
         {error && (
