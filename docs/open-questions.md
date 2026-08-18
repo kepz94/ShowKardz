@@ -2,46 +2,34 @@
 
 Decisions owed before build. Nothing here is blocked on code.
 
-## 1 — The card number is on the back
+## 1 — Does the card number belong in the title?
 
-The spec has the one-shot camera read capturing player name *and* card number, composing a title like `2023 Panini Prizm Anthony Edwards #58`. On most modern base cards the `#58` is printed on the reverse. A single front-facing shot won't see it.
+Not an OCR question — a geometry one. The **sticker** number reads fine; it's printed text and the camera handles it. The **manufacturer's card number** (the `#58` in "Anthony Edwards #58") is printed on the *back* of most modern base cards, so a front-facing shot never has it in frame.
 
 Options:
-- Drop the number from the title and search on name alone.
-- Two shots per card.
-- Type the number only when it matters (parallels, high-value).
+- Compose titles without it, searching on year + product + player.
+- Flip every card for a second shot.
+- Type it by hand only on cards where it matters.
 
-This changes the eBay query, so it changes how good the comps are. Not cosmetic.
+**Decided by question 2.** If adding `58` doesn't measurably improve the eBay results, the camera never needs to see the back and this closes itself.
 
 ## 2 — Does the auto-built eBay query return the right cards?
 
-The current guess is the composed title plus sold and completed filters:
+Open. **Test built and waiting on a browser run:** `design/comps-query-test.html`.
 
-```
-ebay.com/sch/i.html?_nkw=2023+Panini+Prizm+Anthony+Edwards+58&LH_Sold=1&LH_Complete=1
-```
+eBay returns **403** to automated fetches from a datacenter, so this cannot be answered from a container — it has to run from a real browser on a residential connection. The test page generates seven query variants for any card and opens real sold-and-completed listings for each.
 
-Probably fine for a base card. For a numbered parallel it may pull every colour, which makes the comps useless in exactly the cases where the money is — a `/99` silver and a base card are not the same market.
+Variants under test:
 
-**Proposed:** run a batch of these queries against real cards — base, silver, numbered parallel, graded slab — and read what actually comes back before anything is built on the link.
+| Variant | What it decides |
+|---|---|
+| `year product player` | The simplest thing the app could build |
+| `year product player number` | Whether the card number helps — this also settles question 1 |
+| `… -auto -patch -psa -bgs -sgc` | Whether negative keywords should be baked in by default |
+| `year product parallel player` | Whether "Silver" returns silvers or every colour |
+| `year product player PSA 10` | The graded case |
 
-## 3 — Do sticker numbers encode physical location?
-
-e.g. 100s = left case, 200s = binder two. Open in Dev Hub since discovery.
-
-Trade-off: encoding location makes the close-out case audit far more useful (you can tell *where* a missing card should be). It also means the roll can't just be peeled sequentially, which is the thing that makes intake fast.
-
-## 4 — Trade screen comps need signal
-
-The trade flow is specified as: snap their card → comps link → type value. That link needs network **at the show**, where signal is unreliable. Cash sales work fully offline; live-valuing an incoming trade does not.
-
-Options:
-- The flow degrades to "type a value from memory" with no comps, and says so plainly.
-- Trades require signal, and the app says that up front rather than failing mid-negotiation.
-
-## 5 — Floor: warn or block?
-
-Current design warns and does not block. A dealer taking $11 under their own floor to move a slow card is a normal Saturday, and a tool that argues with them gets closed. If a deliberate confirm is wanted instead, it's a small change.
+The failure mode that matters: a raw base card search flooded with autos, patches and slabs that sell for 10× the card, which would make the comps read wildly high in exactly the direction that costs money.
 
 ---
 
@@ -49,7 +37,13 @@ Current design warns and does not block. A dealer taking $11 under their own flo
 
 **Product name** — SHOWKARDZ. (Mockups used "Table" as a placeholder.)
 
-**Add to Home Screen as a requirement** — accepted. See `platform-constraints.md`.
+**Sticker numbers do not encode location** — 100s = left case, 200s = binder two was considered and rejected. It breaks sequential peel-and-stick, which is what makes intake fast. If the close-out audit needs location later, that becomes a per-card field, not a meaning baked into the number.
+
+**Trades degrade without signal** — valuing the other side needs the comps link, and that needs network at the show. Rather than have one flow die mid-negotiation, the trade screen falls back to typing a value from the dealer's own read, with no comps, and says plainly that's what's happening. Cash sales remain fully offline.
+
+**The floor warns, it never blocks** — taking $11 under your own floor to move a slow card is a normal Saturday, and a tool that argues with the dealer gets closed. The warning is loud (red total, the amount under the floor named on the charge button) and the sale still goes through.
+
+**Add to Home Screen is a requirement** — see `platform-constraints.md`.
 
 **No stored market figure** — the app cannot obtain sold prices without a paid API, so it never displays one. The market read happens during the night-before price pass and comes out as the dealer's price. Show day shows that number and a link to real listings.
 

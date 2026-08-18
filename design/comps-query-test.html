@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SHOWKARDZ — comps query test</title>
+<style>
+  :root{
+    --bg:#F2F2EF;--paper:#FFF;--ink:#0D0D0D;--ink2:#41413C;--mut:#75756E;
+    --hair:#E4E4DF;--hair2:#CFCFC8;--field:#F5F5F1;--warn:#C4361A;--ok:#1B6B4A;
+    --sans:"Segoe UI Variable Text","Segoe UI",-apple-system,system-ui,sans-serif;
+    --mono:Consolas,"Cascadia Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+       padding:32px 20px 80px;line-height:1.55}
+  .wrap{max-width:860px;margin:0 auto}
+  .eb{font-size:11px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:var(--mut)}
+  h1{margin:9px 0 0;font-size:26px;font-weight:600;letter-spacing:-.02em}
+  .lede{font-size:14.5px;color:var(--ink2);margin:11px 0 0;max-width:620px}
+  h2{font-size:12px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:var(--mut);
+     margin:38px 0 14px;padding-bottom:9px;border-bottom:1px solid var(--hair2)}
+
+  .ask{background:var(--paper);border:1px solid var(--hair2);border-left:3px solid var(--ink);
+       border-radius:8px;padding:16px 18px;margin-top:16px}
+  .ask h3{margin:0;font-size:14.5px;font-weight:600}
+  .ask p{margin:7px 0 0;font-size:13.5px;color:var(--ink2)}
+  .ask ul{margin:9px 0 0;padding-left:19px;font-size:13.5px;color:var(--ink2)}
+  .ask li{margin-bottom:4px}
+
+  .gen{background:var(--paper);border:1px solid var(--hair2);border-radius:9px;padding:16px 18px;margin-top:16px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:11px}
+  label{display:block;font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;
+        color:var(--mut);margin-bottom:5px}
+  input{width:100%;font-family:inherit;font-size:16px;padding:9px 11px;border:1px solid var(--hair2);
+        border-radius:7px;background:var(--field)}
+  input:focus{outline:2px solid var(--ink);outline-offset:1px;background:var(--paper)}
+  .gen button{margin-top:13px;border:0;border-radius:8px;background:var(--ink);color:#fff;
+              font-family:inherit;font-size:14.5px;font-weight:600;padding:12px 20px;cursor:pointer}
+  .gen button:hover{background:#282824}
+  .gen button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+  .row{background:var(--paper);border:1px solid var(--hair2);border-radius:9px;padding:15px 17px;margin-bottom:12px}
+  .row .top{display:flex;justify-content:space-between;align-items:baseline;gap:14px;flex-wrap:wrap}
+  .row .nm{font-size:14.5px;font-weight:600}
+  .row .tests{font-size:12.5px;color:var(--mut)}
+  .row .q{font-family:var(--mono);font-size:12px;background:var(--field);padding:7px 10px;
+          border-radius:5px;margin-top:9px;word-break:break-all;color:var(--ink2)}
+  .row a.go{display:inline-block;margin-top:10px;padding:10px 16px;border:1px solid var(--ink);
+            border-radius:7px;text-decoration:none;color:var(--ink);font-weight:600;font-size:13.5px}
+  .row a.go:hover{background:var(--field)}
+  .row .verdict{margin-top:11px;padding-top:11px;border-top:1px solid var(--hair);font-size:12.5px;color:var(--mut)}
+
+  #out:empty::after{content:"Fill the card in above and press Build queries.";font-size:13.5px;color:var(--mut)}
+  .foot{font-size:13px;color:var(--mut);margin-top:30px;max-width:620px}
+  .foot b{color:var(--ink2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eb">SHOWKARDZ · Open question 2</div>
+  <h1>Does the auto-built comps query actually work?</h1>
+  <p class="lede">eBay blocks automated fetches, so this has to run from your browser. Every link below opens real sold-and-completed listings in a new tab. Two minutes of clicking settles what the app should generate.</p>
+
+  <div class="ask">
+    <h3>What you're judging</h3>
+    <p>For each query, look at page one and answer one thing: <b>is most of what I see the card I actually meant?</b></p>
+    <ul>
+      <li><b>Base card</b> — is it flooded with autos, patches and graded slabs that sell for 10× the raw card?</li>
+      <li><b>Parallel</b> — does searching "Silver" return silvers, or every colour in the rainbow?</li>
+      <li><b>Card number</b> — does adding <code>58</code> sharpen the results or wreck them?</li>
+      <li><b>Negative keywords</b> — does <code>-auto -psa -bgs</code> clean up the raw-card search enough to matter?</li>
+    </ul>
+  </div>
+
+  <h2>Build queries for a card you actually own</h2>
+  <div class="gen">
+    <div class="grid">
+      <div><label for="yr">Year</label><input id="yr" value="2023"></div>
+      <div><label for="pr">Product</label><input id="pr" value="Panini Prizm"></div>
+      <div><label for="pl">Player</label><input id="pl" value="Anthony Edwards"></div>
+      <div><label for="cn">Card #</label><input id="cn" value="58"></div>
+      <div><label for="pa">Parallel</label><input id="pa" placeholder="Silver, Green, /99…"></div>
+    </div>
+    <button id="build">Build queries</button>
+  </div>
+
+  <h2>Query variants</h2>
+  <div id="out"></div>
+
+  <noscript>
+    <div class="row">
+      <div class="nm">Scripts are off — here are the fixed examples</div>
+      <div class="q">2023 Panini Prizm Anthony Edwards</div>
+      <a class="go" href="https://www.ebay.com/sch/i.html?_nkw=2023+Panini+Prizm+Anthony+Edwards&LH_Sold=1&LH_Complete=1" target="_blank" rel="noopener">Open sold listings ↗</a>
+      <div class="q">2023 Panini Prizm Anthony Edwards 58</div>
+      <a class="go" href="https://www.ebay.com/sch/i.html?_nkw=2023+Panini+Prizm+Anthony+Edwards+58&LH_Sold=1&LH_Complete=1" target="_blank" rel="noopener">Open sold listings ↗</a>
+      <div class="q">2023 Panini Prizm Anthony Edwards -auto -patch -psa -bgs -sgc</div>
+      <a class="go" href="https://www.ebay.com/sch/i.html?_nkw=2023+Panini+Prizm+Anthony+Edwards+-auto+-patch+-psa+-bgs+-sgc&LH_Sold=1&LH_Complete=1" target="_blank" rel="noopener">Open sold listings ↗</a>
+      <div class="q">2023 Panini Prizm Silver Anthony Edwards</div>
+      <a class="go" href="https://www.ebay.com/sch/i.html?_nkw=2023+Panini+Prizm+Silver+Anthony+Edwards&LH_Sold=1&LH_Complete=1" target="_blank" rel="noopener">Open sold listings ↗</a>
+    </div>
+  </noscript>
+
+  <p class="foot"><b>What the answer decides:</b> whether the app's auto-built query includes the card number (which settles open question 1 — if the number doesn't improve results, the camera never needs to see the back), whether it bakes in negative keywords by default, and whether parallels need the dealer to confirm the query instead of trusting it blind.</p>
+</div>
+
+<script>
+(function(){
+  var VARIANTS = [
+    {nm:"Name and product only",       tests:"The simplest thing the app could build",        f:function(c){return [c.yr,c.pr,c.pl].join(" ")}},
+    {nm:"With card number",            tests:"Does #" + "num sharpen or wreck it?",            f:function(c){return [c.yr,c.pr,c.pl,c.cn].join(" ")}},
+    {nm:"With negative keywords",      tests:"Strips autos, patches and slabs",                f:function(c){return [c.yr,c.pr,c.pl].join(" ")+" -auto -patch -psa -bgs -sgc"}},
+    {nm:"Number and negatives",        tests:"Both filters at once",                           f:function(c){return [c.yr,c.pr,c.pl,c.cn].join(" ")+" -auto -patch -psa -bgs -sgc"}},
+    {nm:"Parallel named",              tests:"Only meaningful for a parallel",                 f:function(c){return [c.yr,c.pr,c.pa,c.pl].join(" ")},needsPa:true},
+    {nm:"Parallel plus number",        tests:"Tightest parallel query",                        f:function(c){return [c.yr,c.pr,c.pa,c.pl,c.cn].join(" ")},needsPa:true},
+    {nm:"Graded — PSA 10",             tests:"The slab case, where certs are authoritative",   f:function(c){return [c.yr,c.pr,c.pl,"PSA 10"].join(" ")}}
+  ];
+
+  function clean(s){ return String(s||"").trim().replace(/\s+/g," "); }
+  function url(q){
+    return "https://www.ebay.com/sch/i.html?_nkw=" + encodeURIComponent(q).replace(/%20/g,"+")
+         + "&LH_Sold=1&LH_Complete=1";
+  }
+
+  function build(){
+    var c = {
+      yr: clean(document.getElementById("yr").value),
+      pr: clean(document.getElementById("pr").value),
+      pl: clean(document.getElementById("pl").value),
+      cn: clean(document.getElementById("cn").value),
+      pa: clean(document.getElementById("pa").value)
+    };
+    var out = document.getElementById("out");
+    out.innerHTML = "";
+    VARIANTS.forEach(function(v){
+      if (v.needsPa && !c.pa) return;
+      var q = clean(v.f(c));
+      var row = document.createElement("div");
+      row.className = "row";
+      var top = document.createElement("div");
+      top.className = "top";
+      var nm = document.createElement("span"); nm.className = "nm"; nm.textContent = v.nm;
+      var ts = document.createElement("span"); ts.className = "tests"; ts.textContent = v.tests;
+      top.appendChild(nm); top.appendChild(ts);
+      var qd = document.createElement("div"); qd.className = "q"; qd.textContent = q;
+      var a = document.createElement("a");
+      a.className = "go"; a.href = url(q); a.target = "_blank"; a.rel = "noopener";
+      a.textContent = "Open sold listings ↗";
+      var vd = document.createElement("div");
+      vd.className = "verdict";
+      vd.textContent = "Page one: mostly the right card, or mostly noise?";
+      row.appendChild(top); row.appendChild(qd); row.appendChild(a); row.appendChild(vd);
+      out.appendChild(row);
+    });
+  }
+
+  document.getElementById("build").addEventListener("click", build);
+  build();
+})();
+</script>
+</body>
+</html>
