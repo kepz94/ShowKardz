@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SHOWKARDZ — comps query test</title>
+<title>SHOWKARDZ — comps query ladder</title>
 <style>
   :root{
     --bg:#F2F2EF;--paper:#FFF;--ink:#0D0D0D;--ink2:#41413C;--mut:#75756E;
@@ -13,24 +13,17 @@
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
-       padding:32px 20px 80px;line-height:1.55}
-  .wrap{max-width:860px;margin:0 auto}
+       padding:30px 20px 80px;line-height:1.55}
+  .wrap{max-width:900px;margin:0 auto}
   .eb{font-size:11px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:var(--mut)}
   h1{margin:9px 0 0;font-size:26px;font-weight:600;letter-spacing:-.02em}
-  .lede{font-size:14.5px;color:var(--ink2);margin:11px 0 0;max-width:620px}
+  .lede{font-size:14.5px;color:var(--ink2);margin:11px 0 0;max-width:660px}
   h2{font-size:12px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:var(--mut);
-     margin:38px 0 14px;padding-bottom:9px;border-bottom:1px solid var(--hair2)}
-
-  .ask{background:var(--paper);border:1px solid var(--hair2);border-left:3px solid var(--ink);
-       border-radius:8px;padding:16px 18px;margin-top:16px}
-  .ask h3{margin:0;font-size:14.5px;font-weight:600}
-  .ask p{margin:7px 0 0;font-size:13.5px;color:var(--ink2)}
-  .ask ul{margin:9px 0 0;padding-left:19px;font-size:13.5px;color:var(--ink2)}
-  .ask li{margin-bottom:4px}
+     margin:34px 0 14px;padding-bottom:9px;border-bottom:1px solid var(--hair2)}
 
   .gen{background:var(--paper);border:1px solid var(--hair2);border-radius:9px;padding:16px 18px;margin-top:16px}
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:11px}
-  label{display:block;font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:11px}
+  label{display:block;font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;
         color:var(--mut);margin-bottom:5px}
   input{width:100%;font-family:inherit;font-size:16px;padding:9px 11px;border:1px solid var(--hair2);
         border-radius:7px;background:var(--field)}
@@ -40,118 +33,163 @@
   .gen button:hover{background:#282824}
   .gen button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 
-  .row{background:var(--paper);border:1px solid var(--hair2);border-radius:9px;padding:15px 17px;margin-bottom:12px}
-  .row .top{display:flex;justify-content:space-between;align-items:baseline;gap:14px;flex-wrap:wrap}
-  .row .nm{font-size:14.5px;font-weight:600}
-  .row .tests{font-size:12.5px;color:var(--mut)}
-  .row .q{font-family:var(--mono);font-size:12px;background:var(--field);padding:7px 10px;
-          border-radius:5px;margin-top:9px;word-break:break-all;color:var(--ink2)}
-  .row a.go{display:inline-block;margin-top:10px;padding:10px 16px;border:1px solid var(--ink);
-            border-radius:7px;text-decoration:none;color:var(--ink);font-weight:600;font-size:13.5px}
-  .row a.go:hover{background:var(--field)}
-  .row .verdict{margin-top:11px;padding-top:11px;border-top:1px solid var(--hair);font-size:12.5px;color:var(--mut)}
+  .step{background:var(--paper);border:1px solid var(--hair2);border-radius:9px;padding:15px 17px;
+        margin-bottom:12px;position:relative}
+  .step .n{position:absolute;left:-11px;top:15px;width:23px;height:23px;border-radius:50%;
+           background:var(--ink);color:#fff;font-size:12px;font-weight:700;display:flex;
+           align-items:center;justify-content:center}
+  @media(max-width:700px){.step .n{position:static;margin-bottom:8px}}
+  .step .nm{font-size:15px;font-weight:600;margin-left:18px}
+  @media(max-width:700px){.step .nm{margin-left:0}}
+  .step .adds{font-size:13px;color:var(--ink2);margin-top:5px}
+  .step .look{font-size:12.5px;color:var(--mut);margin-top:6px}
+  .step .look b{color:var(--ink2)}
+  .step .q{font-family:var(--mono);font-size:11.5px;background:var(--field);padding:8px 10px;
+           border-radius:5px;margin-top:10px;word-break:break-all;color:var(--ink2)}
+  .step a.go{display:inline-block;margin-top:10px;padding:11px 18px;border:1px solid var(--ink);
+             border-radius:7px;text-decoration:none;color:var(--ink);font-weight:600;font-size:14px}
+  .step a.go:hover{background:var(--field)}
+  .step a.go:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+  .step.guess{border-left:3px solid var(--warn)}
+  .tagx{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+        padding:3px 8px;border-radius:4px;margin-left:8px;vertical-align:2px}
+  .tagx.g{background:#FDF0ED;color:var(--warn)}
+  .tagx.k{background:#EDF6F1;color:var(--ok)}
 
-  #out:empty::after{content:"Fill the card in above and press Build queries.";font-size:13.5px;color:var(--mut)}
-  .foot{font-size:13px;color:var(--mut);margin-top:30px;max-width:620px}
-  .foot b{color:var(--ink2)}
+  .box{background:var(--paper);border:1px solid var(--hair2);border-left:3px solid var(--ink);
+       border-radius:8px;padding:16px 18px;margin-top:16px}
+  .box h3{margin:0;font-size:14.5px;font-weight:600}
+  .box p{margin:7px 0 0;font-size:13.5px;color:var(--ink2)}
+  .box code{font-family:var(--mono);font-size:12px;background:var(--field);padding:1px 5px;border-radius:3px}
+  .foot{font-size:13px;color:var(--mut);margin-top:26px;max-width:660px}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="eb">SHOWKARDZ · Open question 2</div>
-  <h1>Does the auto-built comps query actually work?</h1>
-  <p class="lede">eBay blocks automated fetches, so this has to run from your browser. Every link below opens real sold-and-completed listings in a new tab. Two minutes of clicking settles what the app should generate.</p>
+  <h1>Comps query ladder — noisy to precise</h1>
+  <p class="lede">Each rung adds one constraint. Click down the ladder until the results stop being garbage, then tell me which rung it was — that's the query the app will build. Rungs marked <span class="tagx g">guess</span> use eBay aspect-filter syntax I could not verify from here, so they may simply do nothing. If a guessed rung returns the same results as the one above it, the syntax didn't take.</p>
 
-  <div class="ask">
-    <h3>What you're judging</h3>
-    <p>For each query, look at page one and answer one thing: <b>is most of what I see the card I actually meant?</b></p>
-    <ul>
-      <li><b>Base card</b> — is it flooded with autos, patches and graded slabs that sell for 10× the raw card?</li>
-      <li><b>Parallel</b> — does searching "Silver" return silvers, or every colour in the rainbow?</li>
-      <li><b>Card number</b> — does adding <code>58</code> sharpen the results or wreck them?</li>
-      <li><b>Negative keywords</b> — does <code>-auto -psa -bgs</code> clean up the raw-card search enough to matter?</li>
-    </ul>
+  <div class="box">
+    <h3>Why this is worth the five minutes</h3>
+    <p>The comps link is the only market input in the whole product. If it returns a base card mixed with autos, patches and PSA 10s, the price pass reads high and you leave money on the table in the expensive direction. Everything downstream — your price, the floor, the deal math — inherits whatever this query returns.</p>
   </div>
 
-  <h2>Build queries for a card you actually own</h2>
+  <h2>The card you're testing</h2>
   <div class="gen">
     <div class="grid">
-      <div><label for="yr">Year</label><input id="yr" value="2023"></div>
-      <div><label for="pr">Product</label><input id="pr" value="Panini Prizm"></div>
-      <div><label for="pl">Player</label><input id="pl" value="Anthony Edwards"></div>
-      <div><label for="cn">Card #</label><input id="cn" value="58"></div>
-      <div><label for="pa">Parallel</label><input id="pa" placeholder="Silver, Green, /99…"></div>
+      <div><label for="season">Season</label><input id="season" value="2023-24"></div>
+      <div><label for="prod">Product</label><input id="prod" value="Panini Prizm"></div>
+      <div><label for="player">Player</label><input id="player" value="Anthony Edwards"></div>
+      <div><label for="cnum">Card #</label><input id="cnum" value="58"></div>
+      <div><label for="par">Parallel</label><input id="par" placeholder="Silver Prizm"></div>
+      <div><label for="grader">Grader</label><input id="grader" placeholder="PSA"></div>
+      <div><label for="grade">Grade</label><input id="grade" placeholder="10"></div>
     </div>
-    <button id="build">Build queries</button>
+    <button id="build">Build the ladder</button>
   </div>
 
-  <h2>Query variants</h2>
+  <h2>The ladder</h2>
   <div id="out"></div>
 
-  <noscript>
-    <div class="row">
-      <div class="nm">Scripts are off — here are the fixed examples</div>
-      <div class="q">2023 Panini Prizm Anthony Edwards</div>
-      <a class="go" href="https://www.ebay.com/sch/i.html?_nkw=2023+Panini+Prizm+Anthony+Edwards&LH_Sold=1&LH_Complete=1" target="_blank" rel="noopener">Open sold listings ↗</a>
-      <div class="q">2023 Panini Prizm Anthony Edwards 58</div>
-      <a class="go" href="https://www.ebay.com/sch/i.html?_nkw=2023+Panini+Prizm+Anthony+Edwards+58&LH_Sold=1&LH_Complete=1" target="_blank" rel="noopener">Open sold listings ↗</a>
-      <div class="q">2023 Panini Prizm Anthony Edwards -auto -patch -psa -bgs -sgc</div>
-      <a class="go" href="https://www.ebay.com/sch/i.html?_nkw=2023+Panini+Prizm+Anthony+Edwards+-auto+-patch+-psa+-bgs+-sgc&LH_Sold=1&LH_Complete=1" target="_blank" rel="noopener">Open sold listings ↗</a>
-      <div class="q">2023 Panini Prizm Silver Anthony Edwards</div>
-      <a class="go" href="https://www.ebay.com/sch/i.html?_nkw=2023+Panini+Prizm+Silver+Anthony+Edwards&LH_Sold=1&LH_Complete=1" target="_blank" rel="noopener">Open sold listings ↗</a>
-    </div>
-  </noscript>
-
-  <p class="foot"><b>What the answer decides:</b> whether the app's auto-built query includes the card number (which settles open question 1 — if the number doesn't improve results, the camera never needs to see the back), whether it bakes in negative keywords by default, and whether parallels need the dealer to confirm the query instead of trusting it blind.</p>
+  <p class="foot"><b>Tell me two things:</b> which rung first gave usable results, and whether any of the guessed rungs visibly changed anything. If none of the aspect rungs work, the answer is keyword craft plus category scope, and the query template moves onto the stack declaration so you tune it once per run instead of once per card.</p>
 </div>
 
 <script>
 (function(){
-  var VARIANTS = [
-    {nm:"Name and product only",       tests:"The simplest thing the app could build",        f:function(c){return [c.yr,c.pr,c.pl].join(" ")}},
-    {nm:"With card number",            tests:"Does #" + "num sharpen or wreck it?",            f:function(c){return [c.yr,c.pr,c.pl,c.cn].join(" ")}},
-    {nm:"With negative keywords",      tests:"Strips autos, patches and slabs",                f:function(c){return [c.yr,c.pr,c.pl].join(" ")+" -auto -patch -psa -bgs -sgc"}},
-    {nm:"Number and negatives",        tests:"Both filters at once",                           f:function(c){return [c.yr,c.pr,c.pl,c.cn].join(" ")+" -auto -patch -psa -bgs -sgc"}},
-    {nm:"Parallel named",              tests:"Only meaningful for a parallel",                 f:function(c){return [c.yr,c.pr,c.pa,c.pl].join(" ")},needsPa:true},
-    {nm:"Parallel plus number",        tests:"Tightest parallel query",                        f:function(c){return [c.yr,c.pr,c.pa,c.pl,c.cn].join(" ")},needsPa:true},
-    {nm:"Graded — PSA 10",             tests:"The slab case, where certs are authoritative",   f:function(c){return [c.yr,c.pr,c.pl,"PSA 10"].join(" ")}}
-  ];
+  var SOLD = "&LH_Sold=1&LH_Complete=1";
+  var CAT  = "&_sacat=261328";
+  var NEG  = "-auto -patch -jersey -relic -lot -reprint -custom -digital -psa -bgs -sgc -cgc";
 
-  function clean(s){ return String(s||"").trim().replace(/\s+/g," "); }
-  function url(q){
-    return "https://www.ebay.com/sch/i.html?_nkw=" + encodeURIComponent(q).replace(/%20/g,"+")
-         + "&LH_Sold=1&LH_Complete=1";
+  function c(id){ return String(document.getElementById(id).value||"").trim().replace(/\s+/g," "); }
+  function kw(q){ return "https://www.ebay.com/sch/i.html?_nkw=" + encodeURIComponent(q).replace(/%20/g,"+"); }
+  function asp(name,val){ return "&" + encodeURIComponent(name) + "=" + encodeURIComponent(val); }
+  function asp2(name,val){ return "&aspect-" + encodeURIComponent(name) + "=" + encodeURIComponent(val); }
+
+  function rungs(){
+    var season=c("season"), prod=c("prod"), player=c("player"), cnum=c("cnum"),
+        par=c("par"), grader=c("grader"), grade=c("grade");
+    var basic = [season, prod, player].filter(Boolean).join(" ");
+    var withNum = [season, prod, player, cnum].filter(Boolean).join(" ");
+    var withPar = [season, prod, par, player].filter(Boolean).join(" ");
+    var L = [];
+
+    L.push({nm:"Keyword only", tag:"known", adds:"What the app builds today. The version you already saw.",
+      look:"Baseline. Expect autos, patches, slabs and lots mixed together.",
+      q:basic, url:kw(basic)+SOLD});
+
+    L.push({nm:"Plus the card number", tag:"known", adds:"Adds <b>"+(cnum||"—")+"</b> to the keywords.",
+      look:"Sharper, or wrecked? This also settles whether the camera ever needs to see the card back.",
+      q:withNum, url:kw(withNum)+SOLD});
+
+    L.push({nm:"Plus negative keywords", tag:"known", adds:"Appends "+NEG,
+      look:"Should strip autos, patches, lots and every graded slab. <b>Free and certain to work</b> — the minus operator is documented.",
+      q:basic+" "+NEG, url:kw(basic+" "+NEG)+SOLD});
+
+    L.push({nm:"Plus category scope", tag:"known", adds:"Restricts to Trading Card Singles (<code>_sacat=261328</code>).",
+      look:"Should kill boxes, packs, supplies and bulk lots outright, before keywords do any work.",
+      q:basic+"  [singles only]", url:kw(basic)+SOLD+CAT});
+
+    L.push({nm:"Category plus negatives", tag:"known", adds:"Both of the above together.",
+      look:"This is the best I can build from documented behaviour alone. <b>If results are clean here, we're done</b> and the aspect rungs don't matter.",
+      q:basic+" "+NEG+"  [singles only]", url:kw(basic+" "+NEG)+SOLD+CAT});
+
+    L.push({nm:"Structured — Player and Season aspects", tag:"guess",
+      adds:"Adds <code>Player/Athlete</code> and <code>Season</code> as eBay item-specific filters.",
+      look:"If this rung looks identical to the one above, the aspect syntax did nothing and this whole branch is dead.",
+      q:"aspects: Player/Athlete="+(player||"—")+", Season="+(season||"—"),
+      url:kw(basic)+SOLD+CAT+asp("Player/Athlete",player)+asp("Season",season)});
+
+    L.push({nm:"Structured — alternate aspect syntax", tag:"guess",
+      adds:"Same filters, written as <code>aspect-Player%2FAthlete</code> instead.",
+      look:"Two syntaxes exist in the wild and I can't tell which is live. One of these two should behave differently from rung 5 — if neither does, aspects aren't URL-addressable.",
+      q:"aspect-Player/Athlete="+(player||"—")+", aspect-Season="+(season||"—"),
+      url:kw(basic)+SOLD+CAT+asp2("Player/Athlete",player)+asp2("Season",season)});
+
+    if (par) {
+      L.push({nm:"Parallel — keywords", tag:"known", adds:"Names the parallel in the keywords: <b>"+par+"</b>.",
+        look:"The real test. Does it return only "+par+", or every colour in the set?",
+        q:withPar, url:kw(withPar)+SOLD+CAT});
+
+      L.push({nm:"Parallel — as an aspect", tag:"guess",
+        adds:"Uses <code>Parallel/Variety</code> as a structured filter instead of a keyword.",
+        look:"If this works, parallels stop being the weak case and the whole comps problem is solved for free.",
+        q:"aspect: Parallel/Variety="+par,
+        url:kw(basic)+SOLD+CAT+asp("Parallel/Variety",par)+asp("Player/Athlete",player)});
+    }
+
+    if (grader && grade) {
+      L.push({nm:"Graded slab", tag:"guess",
+        adds:"Filters to <b>"+grader+" "+grade+"</b> via Professional Grader and Grade aspects.",
+        look:"Graded is the one case with an authoritative free lookup anyway (cert numbers), so this is a bonus rather than a necessity.",
+        q:"aspects: Professional Grader="+grader+", Grade="+grade,
+        url:kw(basic)+SOLD+CAT+asp("Professional Grader",grader)+asp("Grade",grade)+asp("Player/Athlete",player)});
+    }
+
+    return L;
   }
 
   function build(){
-    var c = {
-      yr: clean(document.getElementById("yr").value),
-      pr: clean(document.getElementById("pr").value),
-      pl: clean(document.getElementById("pl").value),
-      cn: clean(document.getElementById("cn").value),
-      pa: clean(document.getElementById("pa").value)
-    };
     var out = document.getElementById("out");
     out.innerHTML = "";
-    VARIANTS.forEach(function(v){
-      if (v.needsPa && !c.pa) return;
-      var q = clean(v.f(c));
-      var row = document.createElement("div");
-      row.className = "row";
-      var top = document.createElement("div");
-      top.className = "top";
-      var nm = document.createElement("span"); nm.className = "nm"; nm.textContent = v.nm;
-      var ts = document.createElement("span"); ts.className = "tests"; ts.textContent = v.tests;
-      top.appendChild(nm); top.appendChild(ts);
-      var qd = document.createElement("div"); qd.className = "q"; qd.textContent = q;
-      var a = document.createElement("a");
-      a.className = "go"; a.href = url(q); a.target = "_blank"; a.rel = "noopener";
-      a.textContent = "Open sold listings ↗";
-      var vd = document.createElement("div");
-      vd.className = "verdict";
-      vd.textContent = "Page one: mostly the right card, or mostly noise?";
-      row.appendChild(top); row.appendChild(qd); row.appendChild(a); row.appendChild(vd);
-      out.appendChild(row);
+    rungs().forEach(function(r,i){
+      var d = document.createElement("div");
+      d.className = "step" + (r.tag==="guess" ? " guess" : "");
+      var n = document.createElement("span"); n.className="n"; n.textContent = i+1;
+      var nm = document.createElement("div"); nm.className="nm";
+      nm.textContent = r.nm;
+      var t = document.createElement("span");
+      t.className = "tagx " + (r.tag==="guess" ? "g" : "k");
+      t.textContent = r.tag==="guess" ? "guess" : "documented";
+      nm.appendChild(t);
+      var a1 = document.createElement("div"); a1.className="adds"; a1.innerHTML = r.adds;
+      var lk = document.createElement("div"); lk.className="look"; lk.innerHTML = r.look;
+      var q  = document.createElement("div"); q.className="q"; q.textContent = r.q;
+      var a  = document.createElement("a"); a.className="go"; a.href=r.url;
+      a.target="_blank"; a.rel="noopener"; a.textContent="Open sold listings ↗";
+      d.appendChild(n); d.appendChild(nm); d.appendChild(a1); d.appendChild(lk);
+      d.appendChild(q); d.appendChild(a);
+      out.appendChild(d);
     });
   }
 
