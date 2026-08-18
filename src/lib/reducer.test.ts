@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { reducer } from './reducer';
 import { EMPTY_DB, type DB } from '../types';
+import { liveReceipts } from './live';
 
 const NOW = '2026-08-18T12:00:00.000Z';
 
@@ -128,12 +129,14 @@ describe('receipt/delete', () => {
     type: 'receipt/add', id: 'r1', amountCents: 4000, category: 'table', note: '', now: NOW2,
   });
 
-  it('removes the expense', () => {
-    expect(reducer(withReceipt, { type: 'receipt/delete', id: 'r1' }).receipts).toHaveLength(0);
+  it('takes the expense out of the books', () => {
+    const db = reducer(withReceipt, { type: 'receipt/delete', id: 'r1', now: NOW2 });
+    expect(liveReceipts(db.receipts)).toHaveLength(0);
   });
 
   it('leaves the book alone when the id is not there', () => {
-    expect(reducer(withReceipt, { type: 'receipt/delete', id: 'nope' }).receipts).toHaveLength(1);
+    const db = reducer(withReceipt, { type: 'receipt/delete', id: 'nope', now: NOW2 });
+    expect(liveReceipts(db.receipts)).toHaveLength(1);
   });
 });
 
@@ -159,5 +162,26 @@ describe('card/edit', () => {
     db = reducer(db, { type: 'card/add', id: 'c1', stackId: 's1', number: '0455', name: 'A', now: NOW });
     db = reducer(db, { type: 'card/edit', cardId: 'c1', number: '0455', name: 'B', now: NOW });
     expect(db.cards[0]!.name).toBe('B');
+  });
+});
+
+describe('receipt/delete — tombstones, not holes', () => {
+  const NOW2 = '2026-08-18T13:00:00.000Z';
+  const LATER = '2026-08-18T14:00:00.000Z';
+  const withReceipt2 = reducer(EMPTY_DB, {
+    type: 'receipt/add', id: 'r1', amountCents: 4000, category: 'table', note: '', now: NOW2,
+  });
+
+  it('keeps a record of the deletion rather than removing the row', () => {
+    // A hard delete is indistinguishable from "never synced here" on the next
+    // pull, so the row comes back. The tombstone is what makes it stay dead.
+    const db = reducer(withReceipt2, { type: 'receipt/delete', id: 'r1', now: LATER });
+    expect(db.receipts).toHaveLength(1);
+    expect(db.receipts[0]!.deletedAt).toBe(LATER);
+  });
+
+  it('stamps the deletion so a later edit elsewhere can still win', () => {
+    const db = reducer(withReceipt2, { type: 'receipt/delete', id: 'r1', now: LATER });
+    expect(db.receipts[0]!.updatedAt).toBe(LATER);
   });
 });

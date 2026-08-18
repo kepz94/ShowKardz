@@ -6,6 +6,7 @@
  * that produced it.
  */
 import type { DB, ExpenseCategory } from '../types';
+import { liveReceipts } from './live';
 
 export interface CategoryTotal {
   category: ExpenseCategory;
@@ -31,10 +32,12 @@ export function bookSummary(db: DB): BookSummary {
   const takenCents = db.deals.reduce((sum, d) => sum + d.agreedCents, 0);
   const askedCents = db.deals.reduce((sum, d) => sum + d.subtotalCents, 0);
   const cardsSold = db.deals.reduce((sum, d) => sum + d.lines.length, 0);
-  const spentCents = db.receipts.reduce((sum, r) => sum + r.amountCents, 0);
+  // Tombstoned expenses are gone as far as the books are concerned.
+  const receipts = liveReceipts(db.receipts);
+  const spentCents = receipts.reduce((sum, r) => sum + r.amountCents, 0);
 
   const totals = new Map<ExpenseCategory, number>();
-  for (const r of db.receipts) {
+  for (const r of receipts) {
     totals.set(r.category, (totals.get(r.category) ?? 0) + r.amountCents);
   }
 

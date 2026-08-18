@@ -130,6 +130,12 @@ export interface Receipt {
   photoId?: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+  /**
+   * When this was deleted. A tombstone, not a hole: under sync a hard delete is
+   * indistinguishable from "not synced to this device yet", so the row comes
+   * back on the next pull. Readers must go through liveReceipts().
+   */
+  deletedAt?: Timestamp;
 }
 
 /** The whole persisted state. One document's worth. */

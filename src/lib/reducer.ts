@@ -17,7 +17,7 @@ export type Action =
   | { type: 'card/price'; cardId: string; priceCents: number; floorCents?: number; now: string }
   | { type: 'card/edit'; cardId: string; number?: string; name?: string; cardNumber?: string; now: string }
   | { type: 'receipt/add'; id: string; amountCents: number; category: ExpenseCategory; note: string; photoId?: string; now: string }
-  | { type: 'receipt/delete'; id: string }
+  | { type: 'receipt/delete'; id: string; now: string }
   | { type: 'deal/record'; id: string; cardIds: string[]; agreedCents: number; now: string }
   | { type: 'db/replace'; db: DB };
 
@@ -103,7 +103,13 @@ export function reducer(db: DB, action: Action): DB {
     }
 
     case 'receipt/delete':
-      return { ...db, receipts: db.receipts.filter((r) => r.id !== action.id) };
+      // Tombstone, never a hole — see the deletedAt note in types.ts.
+      return {
+        ...db,
+        receipts: db.receipts.map((r) =>
+          r.id === action.id ? { ...r, deletedAt: action.now, updatedAt: action.now } : r,
+        ),
+      };
 
     case 'deal/record': {
       const cards = action.cardIds

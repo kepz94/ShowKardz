@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useStore, newId, nowIso } from '../lib/store';
 import { dollarsToCents, formatCents } from '../lib/money';
 import { bookSummary } from '../lib/books';
+import { liveReceipts } from '../lib/live';
 import { downscale } from '../lib/images';
 import { putPhoto, deletePhoto } from '../lib/photos';
 import { PhotoThumb } from '../components/PhotoThumb';
@@ -38,7 +39,7 @@ export function Receipts() {
   const amountCents = dollarsToCents(amount);
   const ready = amountCents != null && amountCents > 0 && !busy;
 
-  const receipts = [...db.receipts].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const receipts = liveReceipts(db.receipts).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   async function attach(file: File) {
     setBusy(true);
@@ -88,7 +89,7 @@ export function Receipts() {
   }
 
   function remove(id: string, photoId?: string) {
-    dispatch({ type: 'receipt/delete', id });
+    dispatch({ type: 'receipt/delete', id, now: nowIso() });
     if (photoId) deletePhoto(photoId).catch(() => {});
   }
 
@@ -105,7 +106,7 @@ export function Receipts() {
         <div className="stat">
           <div className="k">Spent</div>
           <div className="v">{formatCents(s.spentCents)}</div>
-          <div className="s">{db.receipts.length} logged</div>
+          <div className="s">{receipts.length} logged</div>
         </div>
         <div className="stat">
           <div className="k">Taken</div>
