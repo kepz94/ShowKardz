@@ -202,11 +202,11 @@ export function Receipts() {
           <div className="grid2" style={{ marginTop: 13 }}>
             <button className="btn ghost sm" disabled={busy}
                     onClick={() => cameraInput.current?.click()}>
-              {busy ? 'Working…' : 'Take photo'}
+              {busy ? 'Working…' : 'Take a photo'}
             </button>
             <button className="btn ghost sm" disabled={busy}
                     onClick={() => uploadInput.current?.click()}>
-              {busy ? 'Working…' : 'Upload image'}
+              {busy ? 'Working…' : 'Pick a screenshot'}
             </button>
           </div>
         )}
@@ -223,7 +223,7 @@ export function Receipts() {
         )}
 
         <button className="btn money" style={{ marginTop: 11 }} disabled={!ready} onClick={save}>
-          File {amountCents ? formatCents(amountCents) : 'expense'}
+          {amountCents ? `Log ${formatCents(amountCents)} expense` : 'Log the expense'}
           <span className="sub">{LABELS[category]}</span>
         </button>
       </div>

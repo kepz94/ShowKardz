@@ -145,7 +145,15 @@ input[type=text],input[type=tel],input[type=search],select,textarea{
 input:focus,select:focus,textarea:focus{background:var(--paper)}
 input::placeholder{color:#AEAEA4}
 .field+.field,.grid2+.field,.field+.grid2,.grid2+.grid2{margin-top:13px}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:11px;align-items:start}
+/* Two fields side by side, with their inputs on the same line.
+   A label that wraps ("Floor (least you would take)" at half a phone width) is
+   taller than one that does not, and with align-items:start that pushed its
+   input a line below its neighbour's. Stretching both cells to equal height and
+   letting the LABEL absorb the slack puts every input flush to the bottom of an
+   equal-height box, so they line up whatever the label says. */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:11px;align-items:stretch}
+.grid2>.field{display:flex;flex-direction:column}
+.grid2>.field>label{flex:1}
 
 /* Money input: the $ sits inside the field so the number owns the space. */
 .money-in{position:relative}
@@ -336,3 +344,118 @@ input[type=range]{width:100%;margin:12px 0 0;accent-color:var(--ink);height:28px
    saying what it needs — rather than absent, which reads as "not built". */
 .evidence.disabled{color:var(--mut);background:var(--bg);border-style:dashed;cursor:default}
 .evidence .why{font-size:12px;font-weight:500;color:var(--mut);text-align:right}
+
+/* ============================================================================
+   ADD A CARD — the Scan screen after the form moved onto it.
+
+   Everything needed to finish a card is on this one screen now, so the layout
+   has to carry a lot without reading as a form: a dark console for the two
+   things that start a card (the number and the camera), then the fields, then
+   one action at the bottom. The register look is unchanged; only the structure
+   moved.
+   ========================================================================== */
+
+/* ---- the pinned group --------------------------------------------------- */
+/* Declared once and carried to the next card. It is the one thing the camera
+   cannot read, so it stays visible rather than living in a dropdown. */
+.stackbar{display:flex;align-items:center;gap:11px;margin-bottom:11px;
+          padding:9px 9px 9px 15px;background:var(--money-soft);
+          border:1px solid var(--money-line);border-radius:var(--r-pill)}
+.stackbar .grow{flex:1;min-width:0}
+.stackbar .k{font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;
+             color:var(--money);opacity:.75}
+.stackbar .v{font-size:13.5px;font-weight:650;color:var(--money);margin-top:1px;
+             white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stackbar .stack-pick{flex:none;width:auto;max-width:44%;padding:8px 11px;border-radius:var(--r-pill);
+                      border:1px solid var(--money-line);background:var(--paper);
+                      color:var(--money);font-size:13px;font-weight:650}
+.stackbar .ch{flex:none;background:var(--paper);border:1px solid var(--money-line);
+              border-radius:var(--r-pill);color:var(--money);font-size:13px;font-weight:650;
+              padding:8px 14px;cursor:pointer}
+
+/* ---- the console: number + camera --------------------------------------- */
+.console{background:var(--band);border-radius:var(--r-lg);padding:14px 15px 15px;
+         box-shadow:var(--sh-band);display:flex;gap:13px;align-items:stretch}
+.console .fld{flex:1;min-width:0}
+.console .k{display:block;font-size:9.5px;font-weight:700;letter-spacing:.15em;
+            text-transform:uppercase;color:rgba(255,255,255,.5);margin:0}
+.console .echo{margin-top:8px;font-size:12.5px;color:rgba(255,255,255,.6)}
+.console .echo b{color:#8FE9C0;font-weight:650}
+.console .echo.bad{color:#F3A48C}
+
+/* The number is typed straight into the console. Specificity is deliberate:
+   the base input[type=tel] rule is (0,1,1) and would paint this white-on-white. */
+.console input.band-input{
+  width:100%;margin-top:6px;background:transparent;border:0;padding:0;
+  color:#fff;font-family:var(--mono);font-size:33px;font-weight:700;letter-spacing:.11em;
+  line-height:1.05;
+}
+.console input.band-input::placeholder{color:rgba(255,255,255,.26)}
+.console input.band-input:focus{outline:none;background:transparent}
+.console input.band-input:focus-visible{outline:2px solid rgba(255,255,255,.6);outline-offset:6px;
+                                        border-radius:4px}
+
+/* The camera, as a tile rather than a button under the fold. */
+.lens{flex:none;width:84px;border-radius:var(--r-md);overflow:hidden;position:relative;
+      border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);
+      padding:0;cursor:pointer;color:#fff}
+.lens img{width:100%;height:100%;object-fit:cover;display:block}
+.lens .lbl{position:absolute;left:0;right:0;bottom:0;font-size:8.5px;font-weight:700;
+           letter-spacing:.1em;text-transform:uppercase;text-align:center;color:#fff;
+           background:rgba(0,0,0,.62);padding:3px 0}
+.lens.empty{border-style:dashed;display:flex;flex-direction:column;align-items:center;
+            justify-content:center;gap:4px;color:rgba(255,255,255,.6);font-size:10.5px;
+            font-weight:650;text-align:center;line-height:1.3;padding:6px}
+.lens.empty .ico{font-size:22px;line-height:1}
+.lens:disabled{opacity:.5;cursor:not-allowed}
+
+/* ---- the composed title ------------------------------------------------- */
+.titleprev{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-md);
+           padding:11px 13px;margin-top:11px}
+.titleprev .k{font-size:9px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;
+              color:var(--mut)}
+.titleprev .v{font-size:13.5px;font-weight:600;margin-top:4px;line-height:1.35}
+.titleprev .v.muted{font-weight:500;color:var(--mut)}
+
+/* A field the camera filled. Green means "this came from the read, not from
+   you" — tap it and it becomes an ordinary field again. */
+input.from-read{background:var(--money-soft);border-color:var(--money-line);
+                color:var(--money);font-weight:650}
+.claim.bad{color:var(--alert);font-weight:600}
+
+/* ---- the action row ----------------------------------------------------- */
+.addrow{display:flex;gap:9px;align-items:stretch;margin-top:12px}
+.addrow .btn{flex:1}
+.discard{flex:none;width:54px;border:1px solid var(--alert-line);border-radius:var(--r-md);
+         background:var(--alert-soft);color:var(--alert);font-size:20px;line-height:1;
+         cursor:pointer}
+.discard:hover{background:#F7E2DA}
+
+/* The confirmation that a card went in, with the undo it needs to be safe. */
+.flash.ok.justadded{align-items:center}
+.flash .undo{flex:none;margin-left:auto;background:none;border:0;color:var(--money);
+             font-size:13px;font-weight:700;text-decoration:underline;text-underline-offset:3px;
+             cursor:pointer;padding:4px 2px}
+
+/* ---- confirm dialog ------------------------------------------------------
+   Deleting is the one destructive act in the app, so it never happens on a
+   single tap and the sheet always names the card it is about to remove. */
+.scrim{position:fixed;inset:0;z-index:49;background:rgba(6,6,4,.55)}
+.dlg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:50;
+     width:min(340px,calc(100vw - 40px));background:var(--paper);border-radius:var(--r-lg);
+     padding:19px 19px 16px;box-shadow:0 22px 60px rgba(0,0,0,.45)}
+.dlg h4{margin:0;font-size:17px;font-weight:680;letter-spacing:-.02em}
+.dlg .card-line{display:flex;align-items:center;gap:10px;margin:13px 0;padding:10px 11px;
+                background:var(--bg);border:1px solid var(--line);border-radius:var(--r-md)}
+.dlg .card-line .n{font-family:var(--mono);font-size:12.5px;font-weight:700;color:var(--ink2);
+                   background:var(--paper);border:1px solid var(--line2);border-radius:5px;
+                   padding:4px 6px;flex:none}
+.dlg .card-line .t{flex:1;min-width:0;font-size:13.5px;font-weight:600;
+                   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dlg .card-line .a{font-size:13.5px;font-weight:650;flex:none}
+.dlg p{margin:0 0 15px;font-size:13px;color:var(--ink2);line-height:1.5}
+.dlg p b{color:var(--alert);font-weight:650}
+.dlg .acts{display:flex;gap:9px}
+.dlg .acts .btn{flex:1;padding:12px 14px;font-size:15px}
+.btn.danger{background:var(--alert)}
+.btn.danger:hover{background:#982C13}

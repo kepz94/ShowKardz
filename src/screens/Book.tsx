@@ -1,3 +1,4 @@
+import { liveCards } from '../lib/cards';
 import { useMemo, useRef, useState } from 'react';
 import { useStore, newId, nowIso } from '../lib/store';
 import { composeTitle } from '../lib/title';
@@ -27,7 +28,7 @@ export function Book({ go }: { go: (r: Route) => void }) {
   if (declaring) return <NewGroup onDone={() => setDeclaring(false)} />;
 
   if (editing) {
-    const live = db.cards.find((c) => c.id === editing);
+    const live = liveCards(db).find((c) => c.id === editing);
     if (live) return <CardDetail card={live} onDone={() => setEditing(null)} />;
   }
   return <Collection go={go} onEdit={setEditing} onNewGroup={() => setDeclaring(true)} />;
@@ -43,22 +44,26 @@ function Collection({
   const [groupFilter, setGroupFilter] = useState<string>('all');
   const [query, setQuery] = useState('');
 
+  // Deleted cards stay in db.cards as tombstones so the sync merge can see
+  // them. Everything below counts and lists only the live ones — lib/cards.ts.
+  const cards = useMemo(() => liveCards(db), [db]);
+
   const counts = useMemo(() => ({
-    all: db.cards.length,
-    unpriced: db.cards.filter((c) => c.status === 'unpriced').length,
-    available: db.cards.filter((c) => c.status === 'available').length,
-    sold: db.cards.filter((c) => c.status === 'sold').length,
-  }), [db.cards]);
+    all: cards.length,
+    unpriced: cards.filter((c) => c.status === 'unpriced').length,
+    available: cards.filter((c) => c.status === 'available').length,
+    sold: cards.filter((c) => c.status === 'sold').length,
+  }), [cards]);
 
   const perGroup = useMemo(() => {
     const map = new Map<string, number>();
-    for (const c of db.cards) map.set(c.stackId ?? '', (map.get(c.stackId ?? '') ?? 0) + 1);
+    for (const c of cards) map.set(c.stackId ?? '', (map.get(c.stackId ?? '') ?? 0) + 1);
     return map;
-  }, [db.cards]);
+  }, [cards]);
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return db.cards
+    return cards
       .filter((c) => (filter === 'all' ? true : c.status === filter))
       .filter((c) => groupFilter === 'all' ? true
         : groupFilter === 'none' ? c.stackId == null
@@ -66,7 +71,7 @@ function Collection({
       .filter((c) => q === '' || c.name.toLowerCase().includes(q) || c.number.includes(q))
       .slice()
       .reverse();
-  }, [db.cards, filter, groupFilter, query]);
+  }, [cards, filter, groupFilter, query]);
 
   return (
     <>
@@ -86,11 +91,11 @@ function Collection({
           <div className="empty">
             <div className="t">Nothing in the book yet</div>
             <div className="s">
-              Scanned cards land here, ready to be named, priced and grouped.
+              Cards you add land here, ready to search, reprice and sell from.
             </div>
             <button className="btn sm" style={{ marginTop: 14, width: 'auto', display: 'inline-flex' }}
                     onClick={() => go('scan')}>
-              Go to Scan
+              Add your first card
             </button>
           </div>
         </div>
@@ -257,6 +262,7 @@ function CardDetail({ card, onDone }: { card: Card; onDone: () => void }) {
    * of loss the constraints doc warns about for the price pass.
    */
   const [newGroup, setNewGroup] = useState<{ year: string; product: string } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const stack: Stack | undefined = db.stacks.find((s) => s.id === groupId);
   const priceCents = dollarsToCents(price);
@@ -318,7 +324,7 @@ function CardDetail({ card, onDone }: { card: Card; onDone: () => void }) {
       <header className="screen-head">
         <div>
           <div className="eb">Card {card.number}</div>
-          <h1>{card.status === 'unpriced' ? 'Fill it in' : 'Edit card'}</h1>
+          <h1>Edit card</h1>
         </div>
         <div className="aside">
           <button className="btn ghost sm" onClick={onDone} style={{ width: 'auto' }}>Done</button>
@@ -478,16 +484,49 @@ function CardDetail({ card, onDone }: { card: Card; onDone: () => void }) {
         )}
       </div>
 
-      <div className="sticky">
+      <div className="sticky addrow">
+        <button className="discard" aria-label="Delete this card"
+                onClick={() => setConfirmDelete(true)}>⌫</button>
         <button className="btn money" disabled={!canSave} onClick={() => void save()}>
-          Save {priceCents ? formatCents(priceCents) : ''}
+          Save card
           <span className="sub">
             {card.status === 'unpriced' && priceCents
-              ? 'Puts it in the case, ready to sell'
-              : 'Stickers are unaffected'}
+              ? `Priced at ${formatCents(priceCents)} — goes in the case`
+              : priceCents
+                ? `Priced at ${formatCents(priceCents)} — the sticker is unaffected`
+                : 'Stays unpriced until you give it a price'}
           </span>
         </button>
       </div>
+
+      {confirmDelete && (
+        <>
+          <div className="scrim" onClick={() => setConfirmDelete(false)} />
+          <div className="dlg" role="dialog" aria-modal="true" aria-labelledby="del-t">
+            <h4 id="del-t">Delete this card?</h4>
+            <div className="card-line">
+              <span className="n">{card.number}</span>
+              <span className="t">{name.trim() === '' ? 'Unnamed' : name.trim()}</span>
+              {card.priceCents ? <span className="a">{formatCents(card.priceCents)}</span> : null}
+            </div>
+            <p>
+              It leaves the book and the case audit, and{' '}
+              <b>sticker number {card.number} becomes free to use again</b>.
+              {card.status === 'sold'
+                ? ' This card already sold — that sale keeps its own record in Sales either way.'
+                : ''}
+            </p>
+            <div className="acts">
+              <button className="btn ghost" onClick={() => setConfirmDelete(false)}>Keep it</button>
+              <button className="btn danger" onClick={() => {
+                dispatch({ type: 'card/delete', cardId: card.id, now: nowIso() });
+                setConfirmDelete(false);
+                onDone();
+              }}>Delete card</button>
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 }
