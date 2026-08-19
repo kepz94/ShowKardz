@@ -82,13 +82,13 @@ describe('composeTitle — blocks kept off the card', () => {
     // in hand, so they win.
     expect(composeTitle(stack, 'Anthony Edwards', '58',
       ['2023 PANINI PRIZM', 'ANTHONY', 'EDWARDS', 'TIMBERWOLVES # 58']))
-      .toBe('2023 Panini Prizm Anthony Edwards Timberwolves 58');
+      .toBe('Anthony Edwards 2023 Panini Prizm Timberwolves 58');
   });
 
   it('drops a block the dealer unticked', () => {
     expect(composeTitle(undefined, 'Anthony Edwards', '58',
       ['2023 PANINI PRIZM', 'ANTHONY EDWARDS']))
-      .toBe('2023 Panini Prizm Anthony Edwards');
+      .toBe('Anthony Edwards 2023 Panini Prizm');
   });
 
   it('keeps an edited block exactly as edited', () => {
@@ -105,5 +105,32 @@ describe('composeTitle — blocks kept off the card', () => {
   it('falls back to the group when every block was unticked', () => {
     expect(composeTitle(stack, 'Anthony Edwards', undefined, ['   ', '']))
       .toBe('2019 Old Group Anthony Edwards');
+  });
+});
+
+describe('composeTitle — the name leads', () => {
+  it('does not repeat a name printed stacked over two lines', () => {
+    // The blocks carry "ANTHONY" and "EDWARDS" separately. Both are already in
+    // the name, so neither is appended again.
+    expect(composeTitle(undefined, 'Anthony Edwards', undefined,
+      ['ANTHONY', 'EDWARDS', 'TIMBERWOLVES']))
+      .toBe('Anthony Edwards Timberwolves');
+  });
+
+  it('does not repeat a name printed on one line', () => {
+    expect(composeTitle(undefined, 'Victor Wembanyama', undefined,
+      ['2024 TOPPS CHROME', 'VICTOR WEMBANYAMA', 'SAN ANTONIO SPURS']))
+      .toBe('Victor Wembanyama 2024 Topps Chrome San Antonio Spurs');
+  });
+
+  it('keeps a block that merely shares a word with the name', () => {
+    // "Edwards Field" is not the name, so it survives.
+    expect(composeTitle(undefined, 'Anthony Edwards', undefined, ['EDWARDS FIELD']))
+      .toBe('Anthony Edwards Edwards Field');
+  });
+
+  it('still lists the blocks when there is no name at all', () => {
+    expect(composeTitle(undefined, '', undefined, ['2023 PANINI PRIZM', 'TIMBERWOLVES']))
+      .toBe('2023 Panini Prizm Timberwolves');
   });
 });

@@ -40,7 +40,26 @@ export function composeTitle(
   printed?: string[],
 ): string {
   const kept = (printed ?? []).map(pretty).filter(Boolean);
-  if (kept.length > 0) return kept.join(' ');
+  if (kept.length > 0) {
+    /*
+     * THE NAME LEADS, then everything else printed on the card.
+     *
+     * Printed order buries the player in the middle — "2023 Panini Prizm
+     * Anthony Edwards Timberwolves 58" — and the player is what a title gets
+     * scanned for in a list. Everything else still goes in, because with the
+     * number of variations of one card in circulation, those are what make a
+     * particular card unique.
+     *
+     * Blocks that only repeat the name are dropped, or a name printed stacked
+     * over two lines comes out as "Anthony Edwards Anthony Edwards".
+     */
+    const nameWords = new Set(name.toLowerCase().split(/\s+/).filter(Boolean));
+    const rest = kept.filter((block) => {
+      const words = block.toLowerCase().split(/\s+/).filter(Boolean);
+      return words.length === 0 || !words.every((w) => nameWords.has(w));
+    });
+    return [name.trim(), ...rest].filter(Boolean).join(' ');
+  }
 
   const parallel = stack?.parallel.trim() ?? '';
   const parts = [

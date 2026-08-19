@@ -63,6 +63,13 @@ export function Scan({ go }: { go: (r: Route) => void }) {
    */
   const [sections, setSections] = useState<{ id: string; text: string; kept: boolean }[]>([]);
   const [editingSection, setEditingSection] = useState<string | null>(null);
+  /**
+   * The read lands in a confirmation sheet rather than straight onto the form.
+   * A read is a claim about the card, and it is worth one deliberate look
+   * before it becomes the title — otherwise a bad read is only noticed later,
+   * in the Book, on a card you can no longer see.
+   */
+  const [confirmRead, setConfirmRead] = useState(false);
 
   const keptText = sections.filter((s) => s.kept).map((s) => s.text.trim()).filter(Boolean);
 
@@ -81,6 +88,7 @@ export function Scan({ go }: { go: (r: Route) => void }) {
 
   const numberField = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
+  const uploadInput = useRef<HTMLInputElement>(null);
 
   const cards = useMemo(() => liveCards(db), [db]);
   const dup = isDuplicate(cards, number);
@@ -145,6 +153,7 @@ export function Scan({ go }: { go: (r: Route) => void }) {
         id: `${Date.now()}-${i}`, text, kept: true,
       })));
       setEditingSection(null);
+      if (result?.lines?.length) setConfirmRead(true);
 
       // The name is the one value the read still fills into a field, because
       // the Book and every list row need one short label per card and a pile of
@@ -177,10 +186,12 @@ export function Scan({ go }: { go: (r: Route) => void }) {
     setFloor('');
     setSections([]);
     setEditingSection(null);
+    setConfirmRead(false);
     setRead({ name: false });
     setReadError(null);
     setError(null);
     if (cameraInput.current) cameraInput.current.value = '';
+    if (uploadInput.current) uploadInput.current.value = '';
     // groupId is deliberately NOT cleared: the next card is almost always from
     // the same stack, and re-declaring it every time is the friction this
     // screen exists to remove.
@@ -245,6 +256,38 @@ export function Scan({ go }: { go: (r: Route) => void }) {
 
   const pending = number !== '' || name !== '' || price !== '' || floor !== '' || photo !== null;
 
+  /**
+   * One row of the read. Rendered in the confirmation sheet and again in the
+   * list on the form, so the two can never drift apart — the sheet is the same
+   * control, seen once deliberately.
+   *
+   * The row says "Edit" in words. A tappable-looking string of text is not an
+   * obvious edit affordance on a screen where most text is just text.
+   */
+  const sectionRow = (s: { id: string; text: string; kept: boolean }) => (
+    editingSection === s.id ? (
+      <div className="rd edit" key={s.id}>
+        <input autoFocus value={s.text} aria-label="Edit what was read"
+               onChange={(e) => setSections((all) => all.map((x) =>
+                 x.id === s.id ? { ...x, text: e.target.value } : x))}
+               onKeyDown={(e) => e.key === 'Enter' && setEditingSection(null)} />
+        <button className="done" onClick={() => setEditingSection(null)}>Done</button>
+      </div>
+    ) : (
+      <div className={`rd${s.kept ? ' on' : ' off'}`} key={s.id}>
+        <button className="tick" aria-pressed={s.kept}
+                aria-label={s.kept ? `Drop ${s.text}` : `Keep ${s.text}`}
+                onClick={() => setSections((all) => all.map((x) =>
+                  x.id === s.id ? { ...x, kept: !x.kept } : x))}>✓</button>
+        <button className="txt" onClick={() => setEditingSection(s.id)}>{s.text}</button>
+        <button className="pen" aria-label={`Edit ${s.text}`}
+                onClick={() => setEditingSection(s.id)}>Edit</button>
+        <button className="x" aria-label={`Delete ${s.text}`}
+                onClick={() => setSections((all) => all.filter((x) => x.id !== s.id))}>×</button>
+      </div>
+    )
+  );
+
   return (
     <>
       <header className="screen-head">
@@ -277,7 +320,21 @@ export function Scan({ go }: { go: (r: Route) => void }) {
         )}
       </div>
 
+      {/*
+       * TWO inputs, deliberately.
+       *
+       * `capture="environment"` does not mean "prefer the camera" on iOS — it
+       * means the photo library is unreachable from that input entirely. One
+       * input cannot offer both, however the button is labelled. Receipts hit
+       * this exact wall and was fixed the same way.
+       */}
       <input ref={cameraInput} type="file" accept="image/*" capture="environment"
+             style={{ display: 'none' }} aria-hidden tabIndex={-1}
+             onChange={(e) => {
+               const file = e.target.files?.[0];
+               if (file) void capture(file);
+             }} />
+      <input ref={uploadInput} type="file" accept="image/*"
              style={{ display: 'none' }} aria-hidden tabIndex={-1}
              onChange={(e) => {
                const file = e.target.files?.[0];
@@ -307,6 +364,11 @@ export function Scan({ go }: { go: (r: Route) => void }) {
             : <><span className="ico" aria-hidden>◎</span>{busy ? 'Working…' : 'Take photo'}</>}
         </button>
       </div>
+
+      <button className="btn ghost sm" disabled={busy} style={{ marginTop: 9 }}
+              onClick={() => uploadInput.current?.click()}>
+        {photo ? 'Choose a different photo' : 'Upload a photo instead'}
+      </button>
 
       {reading && (
         <div className="flash"><div><div className="b">Reading the card…</div></div></div>
@@ -342,35 +404,13 @@ export function Scan({ go }: { go: (r: Route) => void }) {
                 : `${keptText.length} of ${sections.length} kept`}
             </span>
           </h2>
-          <div className="reads">
-            {sections.map((s) => (
-              editingSection === s.id ? (
-                <div className="rd edit" key={s.id}>
-                  <input autoFocus value={s.text} aria-label="Edit what was read"
-                         onChange={(e) => setSections((all) => all.map((x) =>
-                           x.id === s.id ? { ...x, text: e.target.value } : x))}
-                         onKeyDown={(e) => e.key === 'Enter' && setEditingSection(null)} />
-                  <button className="done" onClick={() => setEditingSection(null)}>Done</button>
-                </div>
-              ) : (
-                <div className={`rd${s.kept ? ' on' : ' off'}`} key={s.id}>
-                  <button className="tick" aria-pressed={s.kept}
-                          aria-label={s.kept ? `Drop ${s.text}` : `Keep ${s.text}`}
-                          onClick={() => setSections((all) => all.map((x) =>
-                            x.id === s.id ? { ...x, kept: !x.kept } : x))}>✓</button>
-                  <button className="txt" onClick={() => setEditingSection(s.id)}>{s.text}</button>
-                  <button className="x" aria-label={`Delete ${s.text}`}
-                          onClick={() => setSections((all) => all.filter((x) => x.id !== s.id))}>×</button>
-                </div>
-              )
-            ))}
-          </div>
+          <div className="reads">{sections.map(sectionRow)}</div>
         </>
       )}
 
       {title.trim() !== '' && (
         <div className="searchprev">
-          <div className="k">Searches eBay for</div>
+          <div className="k">Card name</div>
           <div className="v">{title}</div>
         </div>
       )}
@@ -445,6 +485,53 @@ export function Scan({ go }: { go: (r: Route) => void }) {
           </div>
           <button className="undo" onClick={undoLast}>Undo</button>
         </div>
+      )}
+
+      {/*
+       * The read, confirmed once before it becomes the title.
+       *
+       * Everything arrives ticked, so a good read is one tap on "Keep these".
+       * The point is that the dealer looks at it while the card is still in
+       * their hand — a wrong read noticed later, in the Book, is a card they
+       * can no longer see.
+       */}
+      {confirmRead && (
+        <>
+          <div className="scrim" onClick={() => setConfirmRead(false)} />
+          <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="rd-t">
+            <div className="shead">
+              <div>
+                <h4 id="rd-t">What did it read?</h4>
+                <p className="sub">
+                  Everything is kept. Untick what you don’t want, tap Edit to fix a line.
+                </p>
+              </div>
+              <span className="cnt">{keptText.length}/{sections.length}</span>
+            </div>
+
+            <div className="sbody">
+              <div className="reads">{sections.map(sectionRow)}</div>
+
+              <div className="searchprev" style={{ marginTop: 12 }}>
+                <div className="k">Card name</div>
+                <div className={`v${title.trim() === '' ? ' muted' : ''}`}>
+                  {title.trim() === '' ? 'Nothing kept' : title}
+                </div>
+              </div>
+            </div>
+
+            <div className="sfoot">
+              <button className="btn ghost" onClick={() => {
+                setSections([]);
+                setConfirmRead(false);
+              }}>Use none</button>
+              <button className="btn money" onClick={() => setConfirmRead(false)}>
+                Keep these
+                <span className="sub">{keptText.length} of {sections.length}</span>
+              </button>
+            </div>
+          </div>
+        </>
       )}
 
       {confirmDiscard && (
