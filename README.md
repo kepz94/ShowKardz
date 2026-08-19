@@ -144,6 +144,9 @@ it in a repository secret keeps it out of git history, nothing more.
 Errors name their own cause: "requests from referer are blocked" is step 4,
 "quota exceeded" is step 5, "requires billing" is step 1.
 
+Changing the secret does not change the running app on its own — the key is baked
+in at build time, so a deploy has to run after the secret is set or changed.
+
 ## Known gaps
 
 - **Sync is unverified on a real device.** The merge and change-detection rules are
