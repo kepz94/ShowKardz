@@ -84,6 +84,16 @@ export interface Card {
   dealId?: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+  /**
+   * When this card was deleted. A tombstone, not a hole — same reasoning as
+   * Receipt.deletedAt below: under sync a hard delete is indistinguishable from
+   * "not synced to this device yet", so the record comes back on the next pull.
+   * Readers must go through liveCards() in lib/cards.ts.
+   *
+   * A deleted card releases its sticker number, which is the point of deleting
+   * one: a mis-scan should not burn a number off the roll.
+   */
+  deletedAt?: Timestamp;
 }
 
 /** A line on a deal, captured at deal time so the record never re-derives. */

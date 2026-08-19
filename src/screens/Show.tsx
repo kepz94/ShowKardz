@@ -1,3 +1,4 @@
+import { liveCards } from '../lib/cards';
 import { useState } from 'react';
 import type { Route } from '../App';
 import { useStore, newId, nowIso } from '../lib/store';
@@ -18,15 +19,15 @@ export function Show({ go }: { go: (r: Route) => void }) {
   const [charging, setCharging] = useState(false);
   const [done, setDone] = useState<{ agreedCents: number; count: number } | null>(null);
 
-  const sellable = db.cards.filter((c) => c.status === 'available');
+  const sellable = liveCards(db).filter((c) => c.status === 'available');
   const cartCards = cart
-    .map((id) => db.cards.find((c) => c.id === id))
+    .map((id) => liveCards(db).find((c) => c.id === id))
     .filter((c): c is Card => c !== undefined);
 
   // The typo guard: show what the typed number actually points at before it
   // joins the deal. A wrong digit is the failure mode at a busy table.
   const match = entry === '' ? undefined : findByNumber(sellable, entry);
-  const soldMatch = entry === '' ? undefined : findByNumber(db.cards, entry);
+  const soldMatch = entry === '' ? undefined : findByNumber(liveCards(db), entry);
   const alreadyInCart = match ? cart.includes(match.id) : false;
 
   const asks = cartCards.map((c) => c.priceCents ?? 0);
@@ -67,7 +68,7 @@ export function Show({ go }: { go: (r: Route) => void }) {
         </div>
         <div style={{ marginTop: 14, display: 'grid', gap: 9 }}>
           <button className="btn" onClick={() => setDone(null)}>Next sale</button>
-          <button className="btn ghost" onClick={() => go('sales')}>See the day</button>
+          <button className="btn ghost" onClick={() => go('sales')}>Open Sales</button>
         </div>
       </>
     );
@@ -102,7 +103,7 @@ export function Show({ go }: { go: (r: Route) => void }) {
     <>
       <header className="screen-head">
         <div>
-          <div className="eb">Show · works offline</div>
+          <div className="eb">Show</div>
           <h1>Cash sale</h1>
         </div>
         <div className="aside">

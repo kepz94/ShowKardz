@@ -1,3 +1,4 @@
+import { liveCards } from '../lib/cards';
 import { useState } from 'react';
 import type { Route } from '../App';
 import { useStore } from '../lib/store';
@@ -11,7 +12,7 @@ export function Sales({ go }: { go: (r: Route) => void }) {
 
   const s = bookSummary(db);
   const deals = [...db.deals].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const inCase = db.cards.filter((c) => c.status === 'available');
+  const inCase = liveCards(db).filter((c) => c.status === 'available');
 
   const countedNum = counted.trim() === '' ? null : Number(counted.replace(/\D/g, ''));
   const shrink = countedNum == null ? null : inCase.length - countedNum;

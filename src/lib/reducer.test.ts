@@ -1,3 +1,4 @@
+import { liveCards } from './cards';
 import { describe, it, expect } from 'vitest';
 import { reducer } from './reducer';
 import { EMPTY_DB, type DB } from '../types';
@@ -256,5 +257,66 @@ describe('card photos', () => {
     });
     db = reducer(db, { type: 'card/edit', cardId: 'c1', name: 'Edwards', now: NOW });
     expect(db.cards[0]!.photoId).toBe('p1');
+  });
+});
+
+/* ---------------------------------------------------------------------------
+   Deleting a card. Soft, with a tombstone, and the sticker number comes back.
+--------------------------------------------------------------------------- */
+describe('card/delete', () => {
+  const T0 = '2026-08-19T10:00:00.000Z';
+  const T1 = '2026-08-19T11:00:00.000Z';
+
+  const withCard = (): DB => reducer(EMPTY_DB, {
+    type: 'card/add', id: 'c1', number: '0455', name: 'Anthony Edwards', now: T0,
+  });
+
+  it('tombstones the card instead of removing the record', () => {
+    const after = reducer(withCard(), { type: 'card/delete', cardId: 'c1', now: T1 });
+    expect(after.cards).toHaveLength(1);
+    expect(after.cards[0]?.deletedAt).toBe(T1);
+  });
+
+  it('hides the card from every screen', () => {
+    const after = reducer(withCard(), { type: 'card/delete', cardId: 'c1', now: T1 });
+    expect(liveCards(after)).toEqual([]);
+  });
+
+  it('releases the sticker number, so the same sticker can be used again', () => {
+    // The point of deleting: a mis-scan must not burn a number off the roll.
+    const deleted = reducer(withCard(), { type: 'card/delete', cardId: 'c1', now: T1 });
+    const reused = reducer(deleted, {
+      type: 'card/add', id: 'c2', number: '0455', name: 'Victor Wembanyama', now: T1,
+    });
+    expect(liveCards(reused).map((c) => c.name)).toEqual(['Victor Wembanyama']);
+  });
+
+  it('still blocks a duplicate against a card that is alive', () => {
+    const twice = reducer(withCard(), {
+      type: 'card/add', id: 'c2', number: '0455', name: 'Someone Else', now: T1,
+    });
+    expect(liveCards(twice)).toHaveLength(1);
+  });
+
+  it('refuses to edit a deleted card', () => {
+    const deleted = reducer(withCard(), { type: 'card/delete', cardId: 'c1', now: T1 });
+    const edited = reducer(deleted, { type: 'card/edit', cardId: 'c1', name: 'Ghost', now: T1 });
+    expect(edited.cards[0]?.name).toBe('Anthony Edwards');
+  });
+
+  it('leaves a deleted card out of a deal rather than half-recording it', () => {
+    const priced = reducer(withCard(), {
+      type: 'card/price', cardId: 'c1', priceCents: 12000, now: T0,
+    });
+    const deleted = reducer(priced, { type: 'card/delete', cardId: 'c1', now: T1 });
+    const sold = reducer(deleted, {
+      type: 'deal/record', id: 'd1', cardIds: ['c1'], agreedCents: 10000, now: T1,
+    });
+    expect(sold.deals).toEqual([]);
+  });
+
+  it('does nothing to a card id that is not there', () => {
+    const before = withCard();
+    expect(reducer(before, { type: 'card/delete', cardId: 'nope', now: T1 })).toEqual(before);
   });
 });

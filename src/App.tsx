@@ -1,3 +1,4 @@
+import { liveCards } from './lib/cards';
 import { useEffect, useState } from 'react';
 import { Scan } from './screens/Scan';
 import { Book } from './screens/Book';
@@ -44,7 +45,7 @@ export function App() {
 
   // A card scanned but never priced cannot be sold, and that is invisible from
   // the Show screen — so the Book, which is where it gets fixed, carries the mark.
-  const unpriced = db.cards.filter((c) => c.status === 'unpriced').length;
+  const unpriced = liveCards(db).filter((c) => c.status === 'unpriced').length;
 
   return (
     <>

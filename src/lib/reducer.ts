@@ -8,6 +8,7 @@
  */
 import type { Card, DB, Deal, DealLine, ExpenseCategory, Receipt, Stack } from '../types';
 import { isDuplicate, isValidNumber } from './numbers';
+import { liveCards } from './cards';
 import { splitByWeight, sumAsks } from './money';
 import { cardLabel } from './title';
 import { mergeDb } from './sync/merge-db';
@@ -18,6 +19,8 @@ export type Action =
   | { type: 'card/price'; cardId: string; priceCents: number; floorCents?: number; now: string }
   /** stackId: a string assigns a group, null removes one, undefined leaves it. */
   | { type: 'card/edit'; cardId: string; number?: string; name?: string; cardNumber?: string; stackId?: string | null; photoId?: string; now: string }
+  /** Tombstone, never a hole — see Card.deletedAt and lib/cards.ts. */
+  | { type: 'card/delete'; cardId: string; now: string }
   | { type: 'receipt/add'; id: string; amountCents: number; category: ExpenseCategory; note: string; photoId?: string; now: string }
   | { type: 'receipt/delete'; id: string; now: string }
   | { type: 'deal/record'; id: string; cardIds: string[]; agreedCents: number; now: string }
@@ -47,8 +50,10 @@ export function reducer(db: DB, action: Action): DB {
       if (!isValidNumber(action.number)) return db;
 
       // The integrity rule, enforced at the write path rather than in the UI —
-      // a screen can forget to check, this cannot.
-      if (isDuplicate(db.cards, action.number)) return db;
+      // a screen can forget to check, this cannot. Checked against LIVE cards:
+      // a deleted card releases its sticker number, so a mis-scan can be thrown
+      // away and the same sticker used again.
+      if (isDuplicate(liveCards(db), action.number)) return db;
 
       const card: Card = {
         id: action.id, number: action.number, name: action.name,
@@ -78,12 +83,12 @@ export function reducer(db: DB, action: Action): DB {
 
     case 'card/edit': {
       const target = db.cards.find((c) => c.id === action.cardId);
-      if (!target) return db;
+      if (!target || target.deletedAt != null) return db;
 
       // Renumbering runs through the same integrity rule as a new card — a card
-      // may keep its own number, but may not take one another card wears.
+      // may keep its own number, but may not take one another LIVE card wears.
       const number = action.number ?? target.number;
-      if (isDuplicate(db.cards, number, target.id)) return db;
+      if (isDuplicate(liveCards(db), number, target.id)) return db;
 
       return {
         ...db,
@@ -103,6 +108,21 @@ export function reducer(db: DB, action: Action): DB {
         ),
       };
     }
+
+    case 'card/delete':
+      // A tombstone, matching receipt/delete. The record stays so the sync
+      // merge can tell "deleted here" from "not synced here yet" — hard-delete
+      // the row and the next pull brings the card back from the dead.
+      //
+      // A sold card can still be deleted. Its Deal already carries a snapshot
+      // of the number, title and amounts, so Sales and the day log are
+      // untouched; what leaves is the card itself.
+      return {
+        ...db,
+        cards: db.cards.map((c) =>
+          c.id === action.cardId ? { ...c, deletedAt: action.now, updatedAt: action.now } : c,
+        ),
+      };
 
     case 'receipt/add': {
       // A zero or negative expense is a typo, not a record.
@@ -128,7 +148,7 @@ export function reducer(db: DB, action: Action): DB {
     case 'deal/record': {
       const cards = action.cardIds
         .map((id) => db.cards.find((c) => c.id === id))
-        .filter((c): c is Card => c !== undefined);
+        .filter((c): c is Card => c !== undefined && c.deletedAt == null);
 
       // Nothing to sell, or something in the cart is already out of the case:
       // record nothing rather than half a deal. This is also the double-tap guard.

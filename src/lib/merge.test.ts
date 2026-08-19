@@ -38,3 +38,47 @@ describe('mergeCard — sold wins', () => {
     expect(mergeCard(newer, base).priceCents).toBe(6000);
   });
 });
+
+/* ---------------------------------------------------------------------------
+   Tombstones. A delete that does not survive the merge is not a delete — the
+   other device hands the record straight back on the next pull.
+--------------------------------------------------------------------------- */
+describe('mergeCard — deleted wins', () => {
+  const base = (over: Partial<Card> = {}): Card => ({
+    id: 'c1', number: '0455', name: 'Anthony Edwards', status: 'available',
+    priceCents: 12000,
+    createdAt: '2026-08-19T10:00:00.000Z', updatedAt: '2026-08-19T10:00:00.000Z',
+    ...over,
+  });
+
+  it('keeps the delete when the other device only edited', () => {
+    const deleted = base({ deletedAt: '2026-08-19T11:00:00.000Z', updatedAt: '2026-08-19T11:00:00.000Z' });
+    const edited = base({ name: 'Edited later', updatedAt: '2026-08-19T12:00:00.000Z' });
+    expect(mergeCard(deleted, edited).deletedAt).toBe('2026-08-19T11:00:00.000Z');
+    expect(mergeCard(edited, deleted).deletedAt).toBe('2026-08-19T11:00:00.000Z');
+  });
+
+  it('keeps the delete even against a sale, which would otherwise win', () => {
+    // Sold-wins is the rule for live cards. A tombstone outranks it, or a card
+    // deleted on the phone comes back the moment the laptop syncs. The sale is
+    // not lost: the Deal carries its own snapshot of the amounts.
+    const deleted = base({ deletedAt: '2026-08-19T11:00:00.000Z', updatedAt: '2026-08-19T11:00:00.000Z' });
+    const sold = base({ status: 'sold', soldAt: '2026-08-19T12:00:00.000Z', realizedCents: 10000,
+                        updatedAt: '2026-08-19T12:00:00.000Z' });
+    expect(mergeCard(deleted, sold).deletedAt).toBe('2026-08-19T11:00:00.000Z');
+    expect(mergeCard(sold, deleted).deletedAt).toBe('2026-08-19T11:00:00.000Z');
+  });
+
+  it('takes the earlier delete when both devices deleted it', () => {
+    const early = base({ id: 'c1', deletedAt: '2026-08-19T11:00:00.000Z' });
+    const late = base({ id: 'c1', deletedAt: '2026-08-19T13:00:00.000Z' });
+    expect(mergeCard(early, late).deletedAt).toBe('2026-08-19T11:00:00.000Z');
+    expect(mergeCard(late, early).deletedAt).toBe('2026-08-19T11:00:00.000Z');
+  });
+
+  it('leaves sold-wins alone when neither side is deleted', () => {
+    const sold = base({ status: 'sold', soldAt: '2026-08-19T12:00:00.000Z' });
+    const edited = base({ name: 'Edited', updatedAt: '2026-08-19T13:00:00.000Z' });
+    expect(mergeCard(edited, sold).status).toBe('sold');
+  });
+});
