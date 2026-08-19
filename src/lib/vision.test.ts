@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { groupIntoLines, pickCardText, type VisionAnnotation } from './vision';
+import { EMPTY_READ, groupIntoLines, pickCardText, type VisionAnnotation } from './vision';
 
 /**
  * A whole phrase as ONE annotation. Vision NEVER sends this shape - see word()
@@ -18,7 +18,7 @@ const phrase = (text: string, x: number, y: number, w: number, h: number): Visio
 
 describe('pickCardText', () => {
   it('returns nothing for an empty read', () => {
-    expect(pickCardText([])).toEqual({ name: '', cardNumber: '' });
+    expect(pickCardText([])).toEqual(EMPTY_READ);
   });
 
   it('picks the largest text as the name — the player is the biggest thing printed', () => {
@@ -152,7 +152,7 @@ describe('pickCardText — not inventing a card number from noise', () => {
 
   it('reports nothing at all for a read that found only noise', () => {
     expect(pickCardText([phrase('7', 0, 0, 8, 9), phrase('x', 20, 0, 6, 8)]))
-      .toEqual({ name: '', cardNumber: '' });
+      .toMatchObject({ name: '', cardNumber: '', year: '', product: '', team: '' });
   });
 });
 
@@ -253,7 +253,10 @@ describe('pickCardText — driven by a real word-level response', () => {
   it('reads the name off a card that used to come back empty', () => {
     // THE REGRESSION. Before lines were rebuilt from words this returned
     // { name: '', cardNumber: '' } for every card ever photographed.
-    expect(pickCardText(REAL_CARD)).toEqual({ name: 'Anthony Edwards', cardNumber: '58' });
+    expect(pickCardText(REAL_CARD)).toMatchObject({
+      name: 'Anthony Edwards', cardNumber: '58',
+      year: '2023', product: 'Panini Prizm', team: 'Timberwolves',
+    });
   });
 
   it('reads a name with no card number printed on the front', () => {
@@ -264,7 +267,7 @@ describe('pickCardText — driven by a real word-level response', () => {
       word('WEMBANYAMA', 158, 301, 210, 34),
       word('SPURS', 20, 352, 60, 13),
     ]);
-    expect(read).toEqual({ name: 'Victor Wembanyama', cardNumber: '' });
+    expect(read).toMatchObject({ name: 'Victor Wembanyama', cardNumber: '' });
   });
 
   it('does not turn the year into a card number', () => {
@@ -276,6 +279,6 @@ describe('pickCardText — driven by a real word-level response', () => {
       word('7', 12, 40, 9, 11),
       word('rn', 60, 120, 14, 10),
       word('4', 200, 260, 8, 11),
-    ])).toEqual({ name: '', cardNumber: '' });
+    ])).toMatchObject({ name: '', cardNumber: '', product: '', team: '' });
   });
 });

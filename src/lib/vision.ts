@@ -1,10 +1,10 @@
 /**
  * Reading what is printed on a card.
  *
- * Principle 2 stands: the camera reads only what is PRINTED. Everything else —
- * year, product, parallel — comes from the group the dealer declared. So this
- * module's whole job is to find the player's name, and the card number if it is
- * there, and to be honest when it cannot.
+ * The camera reads what is PRINTED, and now keeps all of it: name, year,
+ * product, team and card number. It used to keep only the name and delete the
+ * rest as noise, which meant retyping what was already on the screen and left
+ * the eBay query with nothing but a player name to search on.
  *
  * Errors here are cosmetic by design, never financial: a misread name is ugly
  * in a title, while the price and the sticker number are always the dealer's own
@@ -26,14 +26,49 @@ export interface CardRead {
   name: string;
   /** The printed card number or serial, e.g. "58" or "12/99". Empty if absent. */
   cardNumber: string;
+  /** The year printed on the card, e.g. "2023". Empty if absent. */
+  year: string;
+  /** Manufacturer and set as printed, e.g. "Panini Prizm". Empty if absent. */
+  product: string;
+  /** The team as printed, e.g. "Timberwolves". Empty if absent. */
+  team: string;
+  /** Every line the camera read, in printed order. Never guessed at. */
+  lines: string[];
 }
 
-/** Boilerplate that appears on cards but is never the player. */
-const NOISE = [
-  /^©/, /\binc\b/i, /\ball rights\b/i, /\bproperties\b/i, /\bpanini\b/i, /\btopps\b/i,
-  /\bupper deck\b/i, /\bprizm\b/i, /\bdonruss\b/i, /\boptic\b/i, /\bmosaic\b/i,
+/** Nothing readable. */
+export const EMPTY_READ: CardRead = {
+  name: '', cardNumber: '', year: '', product: '', team: '', lines: [],
+};
+
+/**
+ * Manufacturer and set words.
+ *
+ * These used to be called NOISE and were DELETED from the read, because the SRD
+ * had the dealer declare year, product and parallel as a group and the camera
+ * read only the name. In practice the camera reads all of it perfectly well —
+ * "2023 PANINI PRIZM" comes back off the front every time — so throwing it away
+ * meant retyping what was already on screen, and left the eBay query with
+ * nothing but a player name to search on.
+ *
+ * They are still kept out of the NAME (a big "PANINI" must never win the
+ * name-by-size contest); they are now also what identifies the product line.
+ */
+const PRODUCT_WORDS = [
+  /\bpanini\b/i, /\btopps\b/i, /\bupper deck\b/i, /\bfleer\b/i, /\bbowman\b/i,
+  /\bprizm\b/i, /\bdonruss\b/i, /\boptic\b/i, /\bmosaic\b/i, /\bselect\b/i,
+  /\bchrome\b/i, /\bcontenders\b/i, /\bhoops\b/i, /\babsolute\b/i, /\bscore\b/i,
+  /\bimmaculate\b/i, /\bflawless\b/i, /\bobsidian\b/i, /\bspectra\b/i,
+];
+
+/** Legal small print and league marks. Never the player, never the product. */
+const BOILERPLATE = [
+  /^©/, /\binc\b/i, /\ball rights\b/i, /\bproperties\b/i,
   /\bnba\b/i, /\bnfl\b/i, /\bmlb\b/i, /\bnhl\b/i, /\brookie\b/i, /\bcard\b/i,
 ];
+
+/** Anything that must not be mistaken for the player's name. */
+const NOISE = [...PRODUCT_WORDS, ...BOILERPLATE];
 
 /**
  * A whole line that is nothing but a card number: "#58", "# 58", "12/99".
@@ -235,6 +270,7 @@ export function pickCardText(annotations: VisionAnnotation[]): CardRead {
   );
 
   let name = '';
+  let nameLines: string[] = [];
   if (tallest) {
     // Same type size as the tallest line, within a tolerance that absorbs the
     // difference between a cap-height line and one with a descender.
@@ -266,8 +302,66 @@ export function pickCardText(annotations: VisionAnnotation[]): CardRead {
     // "EDWARDS" stacked now passes.
     const words = joined.split(' ').filter((w) => /^[\p{L}'’-]{2,}$/u.test(w));
     if (words.length >= 2) name = titleCase(joined);
+    nameLines = block.map((l) => l.text);
   }
   const cardNumber = strong || (name !== '' ? weak : '');
 
-  return { name, cardNumber: cardNumber.replace(/\s*\/\s*/, '/') };
+  /*
+   * The rest of what is printed, which the read used to throw away.
+   *
+   * None of this is guessed at from a database — every value below is lifted
+   * from text the camera actually saw, and any of it can be wrong without
+   * costing money, because the sticker number and the price are always typed.
+   */
+
+  // The year: cards carry exactly one, and it is never the card number.
+  const year = lines
+    .flatMap((l) => l.text.split(/\s+/))
+    .find((t) => isYear(t)) ?? '';
+
+  // The product line is whichever line names a manufacturer or a set. The year
+  // is stripped out of it because it has its own field.
+  const productLine = lines.find((l) => PRODUCT_WORDS.some((re) => re.test(l.text)));
+  const product = productLine
+    ? titleCase(productLine.text
+        .split(/\s+/)
+        .filter((t) => !isYear(t) && !/^#?\d+$/.test(t))
+        .join(' ')
+        .trim())
+    : '';
+
+  /*
+   * The team is the leftover: a line of real words that is not the name, not
+   * the product, and not legal small print. Taking the line NEAREST the name
+   * rather than the first match, because that is where a team is printed and
+   * because a card back full of prose would otherwise win.
+   */
+  const nameBottom = tallest ? tallest.bottom : 0;
+  const teamLine = lines
+    .filter((l) => !nameLines.includes(l.text))
+    .filter((l) => l !== productLine)
+    .filter((l) => !BOILERPLATE.some((re) => re.test(l.text)))
+    .filter((l) => !PRODUCT_WORDS.some((re) => re.test(l.text)))
+    .filter((l) => !CARD_NUMBER.test(l.text))
+    .filter((l) => l.text.split(/\s+/).some((w) => /^[\p{L}'’-]{3,}$/u.test(w)))
+    .sort((a, b) => Math.abs(a.top - nameBottom) - Math.abs(b.top - nameBottom))[0];
+
+  // A team line usually carries the card number beside it ("TIMBERWOLVES # 58");
+  // that number has its own field, so it comes out of the team text.
+  const team = teamLine
+    ? titleCase(teamLine.text
+        .replace(EMBEDDED_NUMBER, ' ')
+        .split(/\s+/)
+        .filter((t) => /^[\p{L}'’-]{2,}$/u.test(t))
+        .join(' ')
+        .trim())
+    : '';
+  return {
+    name,
+    cardNumber: cardNumber.replace(/\s*\/\s*/, '/'),
+    year,
+    product,
+    team,
+    lines: lines.map((l) => l.text),
+  };
 }

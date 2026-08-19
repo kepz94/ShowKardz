@@ -60,6 +60,17 @@ export interface Card {
   /** Card number printed on the card itself, e.g. "58". Optional. */
   cardNumber?: string;
   /**
+   * What the camera read off THIS card, as printed on it.
+   *
+   * These override the group when composing a title or an eBay query, because
+   * they came off the card in hand while the group is a default applied to a
+   * run of them. All optional: a card entered with only a sticker number has
+   * none of them, and a card photographed in bad light may have some.
+   */
+  year?: string;
+  product?: string;
+  team?: string;
+  /**
    * The group this card was entered under, if any. Optional by design: intake
    * is number-first, and groups are a thing you turn on later and assign
    * afterwards. A card with no group carries only what is printed on it.

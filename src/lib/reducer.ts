@@ -15,10 +15,10 @@ import { mergeDb } from './sync/merge-db';
 
 export type Action =
   | { type: 'stack/add'; id: string; year: string; product: string; parallel: string; now: string }
-  | { type: 'card/add'; id: string; stackId?: string; number: string; name: string; cardNumber?: string; photoId?: string; now: string }
+  | { type: 'card/add'; id: string; stackId?: string; number: string; name: string; cardNumber?: string; year?: string; product?: string; team?: string; photoId?: string; now: string }
   | { type: 'card/price'; cardId: string; priceCents: number; floorCents?: number; now: string }
   /** stackId: a string assigns a group, null removes one, undefined leaves it. */
-  | { type: 'card/edit'; cardId: string; number?: string; name?: string; cardNumber?: string; stackId?: string | null; photoId?: string; now: string }
+  | { type: 'card/edit'; cardId: string; number?: string; name?: string; cardNumber?: string; year?: string; product?: string; team?: string; stackId?: string | null; photoId?: string; now: string }
   /** Tombstone, never a hole — see Card.deletedAt and lib/cards.ts. */
   | { type: 'card/delete'; cardId: string; now: string }
   | { type: 'receipt/add'; id: string; amountCents: number; category: ExpenseCategory; note: string; photoId?: string; now: string }
@@ -58,6 +58,8 @@ export function reducer(db: DB, action: Action): DB {
       const card: Card = {
         id: action.id, number: action.number, name: action.name,
         cardNumber: action.cardNumber, stackId: action.stackId, photoId: action.photoId,
+        // What the camera read off the card itself. Optional, every one of them.
+        year: action.year, product: action.product, team: action.team,
         status: 'unpriced', createdAt: action.now, updatedAt: action.now,
       };
       return { ...db, cards: [...db.cards, card] };
@@ -99,6 +101,9 @@ export function reducer(db: DB, action: Action): DB {
                 number,
                 name: action.name ?? c.name,
                 cardNumber: action.cardNumber ?? c.cardNumber,
+                year: action.year ?? c.year,
+                product: action.product ?? c.product,
+                team: action.team ?? c.team,
                 // null is an explicit "no group"; undefined means leave it be.
                 stackId: action.stackId === null ? undefined : (action.stackId ?? c.stackId),
                 photoId: action.photoId ?? c.photoId,

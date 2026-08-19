@@ -13,7 +13,7 @@
  * experiment; nothing here depends on them.
  */
 import type { Stack } from '../types';
-import { composeTitle } from './title';
+import { composeTitle, type PrintedOnCard } from './title';
 
 /** eBay category 261328 — Trading Card Singles. Kills boxes, packs and bulk lots. */
 export const SINGLES_CATEGORY = '261328';
@@ -33,8 +33,13 @@ function encodeQuery(q: string): string {
  * A card with no group still gets a usable search — the printed name is what a
  * buyer would type anyway; the group just narrows it.
  */
-export function compsUrl(stack: Stack | undefined, name: string, cardNumber?: string): string {
-  const keywords = `${composeTitle(stack, name, cardNumber)} ${NEGATIVE_KEYWORDS}`;
+export function compsUrl(
+  stack: Stack | undefined,
+  name: string,
+  cardNumber?: string,
+  printed?: PrintedOnCard,
+): string {
+  const keywords = `${composeTitle(stack, name, cardNumber, printed)} ${NEGATIVE_KEYWORDS}`;
   return (
     `https://www.ebay.com/sch/i.html?_nkw=${encodeQuery(keywords)}` +
     `&LH_Sold=1&LH_Complete=1&_sacat=${SINGLES_CATEGORY}`

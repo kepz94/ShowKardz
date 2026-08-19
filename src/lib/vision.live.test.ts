@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { pickCardText, groupIntoLines, type VisionAnnotation } from './vision';
+import { compsUrl } from './comps';
 import real from './__real-vision-response.json';
 
 /**
@@ -33,9 +34,17 @@ describe('a real Vision response', () => {
     expect(lines).toEqual(['2023 PANINI PRIZM', 'ANTHONY', 'EDWARDS', 'TIMBERWOLVES # 58']);
   });
 
-  it('reads the name and card number the app actually shows', () => {
-    expect(pickCardText(annotations.slice(1)))
-      .toEqual({ name: 'Anthony Edwards', cardNumber: '58' });
+  it('keeps everything printed on the card, not just the name', () => {
+    // The whole point of the read: a bare player name returns every card he has
+    // ever appeared on. This is what makes the eBay query the card in hand.
+    expect(pickCardText(annotations.slice(1))).toEqual({
+      name: 'Anthony Edwards',
+      cardNumber: '58',
+      year: '2023',
+      product: 'Panini Prizm',
+      team: 'Timberwolves',
+      lines: ['2023 PANINI PRIZM', 'ANTHONY', 'EDWARDS', 'TIMBERWOLVES # 58'],
+    });
   });
 });
 
@@ -55,6 +64,39 @@ describe('a real Vision response — single-line name, no card number', () => {
   it('reads the player and reports no card number rather than inventing one', () => {
     // "2024" is a year and must never become the card number, and the team line
     // is smaller type so it cannot be mistaken for the name.
-    expect(pickCardText(words2)).toEqual({ name: 'Victor Wembanyama', cardNumber: '' });
+    expect(pickCardText(words2)).toEqual({
+      name: 'Victor Wembanyama',
+      cardNumber: '',
+      year: '2024',
+      product: 'Topps Chrome',
+      team: 'San Antonio Spurs',
+      lines: ['2024 TOPPS CHROME', 'VICTOR WEMBANYAMA', 'SAN ANTONIO SPURS'],
+    });
+  });
+});
+
+/* -------------------------------------------------------------------------
+   What the read is FOR. A player name on its own is not a search: "Anthony
+   Edwards" returns every card he has ever appeared on, including the autos and
+   patches that sell for ten times a base card and drag the read high.
+------------------------------------------------------------------------- */
+describe('the comps query the read produces', () => {
+  const read1 = pickCardText((real.responses[0]?.textAnnotations ?? []).slice(1) as VisionAnnotation[]);
+
+  it('searches the card in hand, not just the player', () => {
+    const url = compsUrl(undefined, read1.name, read1.cardNumber, read1);
+    const kw = decodeURIComponent(new URL(url).searchParams.get('_nkw') ?? '').replace(/\+/g, ' ');
+    expect(kw).toContain('2023');
+    expect(kw).toContain('Panini Prizm');
+    expect(kw).toContain('Anthony Edwards');
+    expect(kw).toContain('Timberwolves');
+    expect(kw).toContain('58');
+  });
+
+  it('needs no declared group to be specific', () => {
+    // Before the read kept this, an ungrouped card searched on the name alone.
+    const withoutRead = compsUrl(undefined, read1.name, read1.cardNumber);
+    const bare = decodeURIComponent(new URL(withoutRead).searchParams.get('_nkw') ?? '');
+    expect(bare).not.toContain('Prizm');
   });
 });

@@ -15,17 +15,33 @@ import type { Card, Stack } from '../types';
 /** A parallel token that means "no parallel", and so never appears in a title. */
 const BASE_PARALLEL = 'base';
 
+/**
+ * What the camera read off this particular card. Any of it may be empty.
+ *
+ * These take precedence over the group, because they came off the card in hand
+ * while the group is only a default applied to a run of them. A dealer working
+ * a box of Prizm with one Select card in it gets the right title without having
+ * to notice.
+ */
+export interface PrintedOnCard {
+  year?: string;
+  product?: string;
+  team?: string;
+}
+
 export function composeTitle(
   stack: Stack | undefined,
   name: string,
   cardNumber?: string,
+  printed?: PrintedOnCard,
 ): string {
   const parallel = stack?.parallel.trim() ?? '';
   const parts = [
-    stack?.year ?? '',
-    stack?.product ?? '',
+    printed?.year?.trim() || stack?.year || '',
+    printed?.product?.trim() || stack?.product || '',
     parallel.toLowerCase() === BASE_PARALLEL ? '' : parallel,
     name,
+    printed?.team?.trim() ?? '',
     cardNumber ?? '',
   ];
   return parts

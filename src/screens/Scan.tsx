@@ -40,14 +40,25 @@ export function Scan({ go }: { go: (r: Route) => void }) {
   const [groupId, setGroupId] = useState('');
   const [name, setName] = useState('');
   const [cardNumber, setCardNumber] = useState('');
+  const [year, setYear] = useState('');
+  const [product, setProduct] = useState('');
+  const [team, setTeam] = useState('');
   const [price, setPrice] = useState('');
   const [floor, setFloor] = useState('');
 
   const [photo, setPhoto] = useState<{ blob: Blob; url: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [reading, setReading] = useState(false);
-  /** Whether the name currently in the field came from the camera, not the dealer. */
-  const [nameFromRead, setNameFromRead] = useState(false);
+  /**
+   * Which fields currently hold what the CAMERA read rather than what the
+   * dealer typed. Drives the green styling and nothing else — the value itself
+   * lives in the field's own state, so a correction is an ordinary edit.
+   */
+  const [read, setRead] = useState({
+    name: false, cardNumber: false, year: false, product: false, team: false,
+  });
+  const clearRead = (field: keyof typeof read) =>
+    setRead((r) => ({ ...r, [field]: false }));
   const [readError, setReadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [justAdded, setJustAdded] = useState<{ id: string; number: string; label: string } | null>(null);
@@ -63,8 +74,9 @@ export function Scan({ go }: { go: (r: Route) => void }) {
   const floorTooHigh = floorCents != null && priceCents != null && floorCents > priceCents;
 
   const stack: Stack | undefined = db.stacks.find((s) => s.id === groupId);
-  const title = composeTitle(stack, name, cardNumber || undefined);
-  const searchable = name.trim() !== '' || stack !== undefined;
+  const printed = { year, product, team };
+  const title = composeTitle(stack, name, cardNumber || undefined, printed);
+  const searchable = name.trim() !== '' || product.trim() !== '' || stack !== undefined;
 
   const ready = isValidNumber(number) && !dup && !busy && !floorTooHigh
     && (price.trim() === '' || (priceCents != null && priceCents > 0));
@@ -115,15 +127,24 @@ export function Scan({ go }: { go: (r: Route) => void }) {
 
       // A read only ever FILLS an empty field. It never overwrites something
       // already typed — a correction has to survive a retake.
-      let fromRead = false;
-      if (result?.name && name.trim() === '') {
-        setName(result.name);
-        fromRead = true;
-      }
-      // Captured silently: there is no card-number field on this screen, so this
-      // only ever feeds the composed title and the comps query.
-      if (result?.cardNumber && cardNumber.trim() === '') setCardNumber(result.cardNumber);
-      setNameFromRead(fromRead);
+      const filled = { ...read };
+      const fill = (
+        value: string | undefined,
+        current: string,
+        set: (v: string) => void,
+        key: keyof typeof read,
+      ) => {
+        if (value && current.trim() === '') {
+          set(value);
+          filled[key] = true;
+        }
+      };
+      fill(result?.name, name, setName, 'name');
+      fill(result?.cardNumber, cardNumber, setCardNumber, 'cardNumber');
+      fill(result?.year, year, setYear, 'year');
+      fill(result?.product, product, setProduct, 'product');
+      fill(result?.team, team, setTeam, 'team');
+      setRead(filled);
 
       if (!result?.name && !result?.cardNumber) {
         setReadError(failure
@@ -142,9 +163,12 @@ export function Scan({ go }: { go: (r: Route) => void }) {
     setPhoto(null);
     setName('');
     setCardNumber('');
+    setYear('');
+    setProduct('');
+    setTeam('');
     setPrice('');
     setFloor('');
-    setNameFromRead(false);
+    setRead({ name: false, cardNumber: false, year: false, product: false, team: false });
     setReadError(null);
     setError(null);
     if (cameraInput.current) cameraInput.current.value = '';
@@ -178,6 +202,11 @@ export function Scan({ go }: { go: (r: Route) => void }) {
       type: 'card/add', id, number: clean,
       name: name.trim(),
       cardNumber: cardNumber.trim() || undefined,
+      // Kept on the card itself, so the title and the eBay query stay specific
+      // whether or not the card was filed into a group.
+      year: year.trim() || undefined,
+      product: product.trim() || undefined,
+      team: team.trim() || undefined,
       stackId: groupId || undefined,
       photoId, now,
     });
@@ -299,24 +328,48 @@ export function Scan({ go }: { go: (r: Route) => void }) {
         <div className="field">
           <label htmlFor="s-name">Name on card</label>
           <input id="s-name" type="text" value={name} placeholder="Type the name"
-                 className={nameFromRead ? 'from-read' : undefined}
-                 onChange={(e) => { setName(e.target.value); setNameFromRead(false); }} />
+                 className={read.name ? 'from-read' : undefined}
+                 onChange={(e) => { setName(e.target.value); clearRead('name'); }} />
         </div>
 
         {/*
-         * There is no card-number field here on purpose.
+         * Everything else printed on the card. The camera fills these; a green
+         * field means it came from the read rather than from the dealer, and
+         * typing in one turns it back into an ordinary field.
          *
-         * Two numbers on one screen read as the same number twice. The sticker
-         * number is the card's identity and the dealer types it; the
-         * manufacturer's number (#58) is printed on the BACK of most modern
-         * base cards, so a front-facing photo never has it in frame, and
-         * whether it improves the eBay results at all is still an open
-         * question in docs/open-questions.md, waiting on a browser run.
-         *
-         * So it is captured silently when the read happens to see it, and
-         * corrected in the Book on the rare card where it matters. It does not
-         * get a box on the screen used two hundred times a night.
+         * They are here because a bare player name is not a search. "Anthony
+         * Edwards" returns every card he has ever appeared on; "2023 Panini
+         * Prizm Anthony Edwards Timberwolves 58" returns the card in hand.
          */}
+        <div className="grid2">
+          <div className="field">
+            <label htmlFor="s-year">Year</label>
+            <input id="s-year" type="tel" inputMode="numeric" value={year} placeholder="2023"
+                   className={read.year ? 'from-read' : undefined}
+                   onChange={(e) => { setYear(e.target.value); clearRead('year'); }} />
+          </div>
+          <div className="field">
+            <label htmlFor="s-product">Product / set</label>
+            <input id="s-product" type="text" value={product} placeholder="Panini Prizm"
+                   className={read.product ? 'from-read' : undefined}
+                   onChange={(e) => { setProduct(e.target.value); clearRead('product'); }} />
+          </div>
+        </div>
+
+        <div className="grid2">
+          <div className="field">
+            <label htmlFor="s-team">Team</label>
+            <input id="s-team" type="text" value={team} placeholder="Timberwolves"
+                   className={read.team ? 'from-read' : undefined}
+                   onChange={(e) => { setTeam(e.target.value); clearRead('team'); }} />
+          </div>
+          <div className="field">
+            <label htmlFor="s-cn">Card number</label>
+            <input id="s-cn" type="text" inputMode="numeric" value={cardNumber} placeholder="58"
+                   className={read.cardNumber ? 'from-read' : undefined}
+                   onChange={(e) => { setCardNumber(e.target.value); clearRead('cardNumber'); }} />
+          </div>
+        </div>
 
         <div className="grid2">
           <div className="field">
@@ -342,7 +395,7 @@ export function Scan({ go }: { go: (r: Route) => void }) {
         )}
 
         {searchable ? (
-          <a className="evidence" href={compsUrl(stack, name, cardNumber || undefined)}
+          <a className="evidence" href={compsUrl(stack, name, cardNumber || undefined, printed)}
              target="_blank" rel="noreferrer">
             <span>See eBay solds</span>
             <span className="why">real listings, new tab</span>
