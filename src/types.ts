@@ -60,16 +60,20 @@ export interface Card {
   /** Card number printed on the card itself, e.g. "58". Optional. */
   cardNumber?: string;
   /**
-   * What the camera read off THIS card, as printed on it.
+   * The blocks of text the camera read off THIS card that the dealer chose to
+   * keep, in printed order and as edited.
+   *
+   * Not parsed into year / product / team. That was tried and it is guesswork:
+   * deciding which line is the team means being wrong on every card whose
+   * layout differs, and the dealer is looking straight at the card anyway. So
+   * the read is presented as what it is — a list of blocks — and curating it is
+   * two taps.
    *
    * These override the group when composing a title or an eBay query, because
-   * they came off the card in hand while the group is a default applied to a
-   * run of them. All optional: a card entered with only a sticker number has
-   * none of them, and a card photographed in bad light may have some.
+   * they came off the card in hand while a group is only a default applied to a
+   * run of them. Absent on a card entered with nothing but a sticker number.
    */
-  year?: string;
-  product?: string;
-  team?: string;
+  printed?: string[];
   /**
    * The group this card was entered under, if any. Optional by design: intake
    * is number-first, and groups are a thing you turn on later and assign

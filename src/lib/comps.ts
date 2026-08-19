@@ -13,7 +13,7 @@
  * experiment; nothing here depends on them.
  */
 import type { Stack } from '../types';
-import { composeTitle, type PrintedOnCard } from './title';
+import { composeTitle } from './title';
 
 /** eBay category 261328 — Trading Card Singles. Kills boxes, packs and bulk lots. */
 export const SINGLES_CATEGORY = '261328';
@@ -37,7 +37,7 @@ export function compsUrl(
   stack: Stack | undefined,
   name: string,
   cardNumber?: string,
-  printed?: PrintedOnCard,
+  printed?: string[],
 ): string {
   const keywords = `${composeTitle(stack, name, cardNumber, printed)} ${NEGATIVE_KEYWORDS}`;
   return (

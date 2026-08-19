@@ -459,3 +459,35 @@ input.from-read{background:var(--money-soft);border-color:var(--money-line);
 .dlg .acts .btn{flex:1;padding:12px 14px;font-size:15px}
 .btn.danger{background:var(--alert)}
 .btn.danger:hover{background:#982C13}
+
+/* ---- what the camera read ------------------------------------------------
+   Vision hands back each block of text with its own box, so these ARE the
+   read — not a parse of it. All ticked on arrival; untick what you don't want,
+   tap the text to edit, X to delete. Whatever stays on builds the search. */
+.reads{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-lg);
+       overflow:hidden;box-shadow:var(--sh-1)}
+.rd{display:flex;align-items:center;gap:10px;padding:9px 12px}
+.rd+.rd{border-top:1px solid var(--line)}
+.rd .tick{flex:none;width:24px;height:24px;border-radius:6px;border:1.5px solid var(--line2);
+          background:var(--paper);color:transparent;font-size:13px;font-weight:800;
+          line-height:1;padding:0;cursor:pointer}
+.rd.on .tick{background:var(--money);border-color:var(--money);color:#fff}
+.rd .txt{flex:1;min-width:0;background:none;border:0;padding:6px 0;text-align:left;
+         font-size:14.5px;font-weight:600;color:var(--ink);cursor:text;
+         white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rd.off .txt{color:var(--mut);text-decoration:line-through;font-weight:500}
+.rd .x{flex:none;background:none;border:0;color:var(--line2);font-size:20px;line-height:1;
+       padding:4px 0 4px 4px;cursor:pointer;width:auto}
+.rd .x:hover{color:var(--alert)}
+.rd.edit{background:var(--raised);gap:9px}
+.rd.edit input{flex:1;min-width:0;padding:9px 11px;border:1.5px solid var(--ink);
+               border-radius:var(--r-sm);background:var(--paper);font-weight:600}
+.rd.edit .done{flex:none;background:var(--ink);color:#fff;border:0;border-radius:var(--r-sm);
+               font-size:13px;font-weight:700;padding:10px 13px;cursor:pointer;width:auto}
+
+/* The search that is about to run, built from whatever is still ticked. */
+.searchprev{background:var(--money-soft);border:1px solid var(--money-line);
+            border-radius:var(--r-md);padding:10px 12px;margin-top:11px}
+.searchprev .k{font-size:9px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;
+               color:var(--money);opacity:.8}
+.searchprev .v{font-size:13.5px;font-weight:650;margin-top:4px;line-height:1.35;color:var(--money)}

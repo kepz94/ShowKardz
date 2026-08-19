@@ -66,3 +66,44 @@ describe('cardLabel', () => {
     expect(cardLabel(card({ number: '' }), undefined).length).toBeGreaterThan(0);
   });
 });
+
+/* -------------------------------------------------------------------------
+   Kept blocks. What the dealer ticked off the card IS the title — nothing
+   reorders it, drops it, or second-guesses which line was the team.
+------------------------------------------------------------------------- */
+describe('composeTitle — blocks kept off the card', () => {
+  const stack: Stack = {
+    id: 's1', year: '2019', product: 'Old Group', parallel: 'Base',
+    createdAt: '2026-08-19T10:00:00.000Z',
+  };
+
+  it('uses the kept blocks and ignores the group', () => {
+    // The group is a default applied to a run of cards; these came off the card
+    // in hand, so they win.
+    expect(composeTitle(stack, 'Anthony Edwards', '58',
+      ['2023 PANINI PRIZM', 'ANTHONY', 'EDWARDS', 'TIMBERWOLVES # 58']))
+      .toBe('2023 Panini Prizm Anthony Edwards Timberwolves 58');
+  });
+
+  it('drops a block the dealer unticked', () => {
+    expect(composeTitle(undefined, 'Anthony Edwards', '58',
+      ['2023 PANINI PRIZM', 'ANTHONY EDWARDS']))
+      .toBe('2023 Panini Prizm Anthony Edwards');
+  });
+
+  it('keeps an edited block exactly as edited', () => {
+    expect(composeTitle(undefined, '', undefined, ['2023 Panini Prizm Silver']))
+      .toBe('2023 Panini Prizm Silver');
+  });
+
+  it('falls back to the group when nothing was kept', () => {
+    // A card typed in with no photo still gets a usable title.
+    expect(composeTitle(stack, 'Anthony Edwards', '58', []))
+      .toBe('2019 Old Group Anthony Edwards 58');
+  });
+
+  it('falls back to the group when every block was unticked', () => {
+    expect(composeTitle(stack, 'Anthony Edwards', undefined, ['   ', '']))
+      .toBe('2019 Old Group Anthony Edwards');
+  });
+});

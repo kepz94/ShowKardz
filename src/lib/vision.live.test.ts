@@ -84,7 +84,8 @@ describe('the comps query the read produces', () => {
   const read1 = pickCardText((real.responses[0]?.textAnnotations ?? []).slice(1) as VisionAnnotation[]);
 
   it('searches the card in hand, not just the player', () => {
-    const url = compsUrl(undefined, read1.name, read1.cardNumber, read1);
+    // Everything the read found, all kept — which is what the screen starts at.
+    const url = compsUrl(undefined, read1.name, read1.cardNumber, read1.lines);
     const kw = decodeURIComponent(new URL(url).searchParams.get('_nkw') ?? '').replace(/\+/g, ' ');
     expect(kw).toContain('2023');
     expect(kw).toContain('Panini Prizm');

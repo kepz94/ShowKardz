@@ -271,7 +271,9 @@ function CardDetail({ card, onDone }: { card: Card; onDone: () => void }) {
   const canSave = !floorTooHigh && (price.trim() === '' || (priceCents != null && priceCents > 0))
     && !busy;
 
-  const title = composeTitle(stack, name, cardNumber || undefined);
+  // The blocks kept at scan time travel with the card, so the title and the
+  // eBay link here match what Scan showed. Without this they silently differ.
+  const title = composeTitle(stack, name, cardNumber || undefined, card.printed);
   // Anything at all to search on: the printed name, or the group's product.
   const searchable = name.trim() !== '' || stack !== undefined;
 
@@ -435,7 +437,7 @@ function CardDetail({ card, onDone }: { card: Card; onDone: () => void }) {
           from the number alone, is most of them. With nothing to search on it
           says what it needs, rather than vanishing and reading as "not built". */}
       {searchable ? (
-        <a className="evidence" href={compsUrl(stack, name, cardNumber || undefined)}
+        <a className="evidence" href={compsUrl(stack, name, cardNumber || undefined, card.printed)}
            target="_blank" rel="noopener noreferrer">
           <span>Check real eBay sold listings</span>
           <span aria-hidden>↗</span>

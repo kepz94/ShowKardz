@@ -15,33 +15,39 @@ import type { Card, Stack } from '../types';
 /** A parallel token that means "no parallel", and so never appears in a title. */
 const BASE_PARALLEL = 'base';
 
-/**
- * What the camera read off this particular card. Any of it may be empty.
- *
- * These take precedence over the group, because they came off the card in hand
- * while the group is only a default applied to a run of them. A dealer working
- * a box of Prizm with one Select card in it gets the right title without having
- * to notice.
- */
-export interface PrintedOnCard {
-  year?: string;
-  product?: string;
-  team?: string;
+/** Cards shout. Title-case them so a composed title reads like a listing. */
+function pretty(text: string): string {
+  const t = text.replace(/#/g, ' ').replace(/\s+/g, ' ').trim();
+  if (t !== t.toUpperCase()) return t;
+  return t.toLowerCase().replace(/(^|[\s'-])(\p{L})/gu, (_, sep: string, ch: string) => sep + ch.toUpperCase());
 }
 
+/**
+ * Compose the title, and the eBay query behind it.
+ *
+ * When the dealer kept blocks off the card, THOSE ARE THE TITLE. They are what
+ * is printed on the card in hand, chosen by the person holding it, so nothing
+ * here second-guesses them — no parsing into year/product/team, no reordering,
+ * no dropping a block because it looked like boilerplate.
+ *
+ * Only when there are none does it fall back to the group: a card typed in
+ * without a photo still gets a usable title from the declaration plus the name.
+ */
 export function composeTitle(
   stack: Stack | undefined,
   name: string,
   cardNumber?: string,
-  printed?: PrintedOnCard,
+  printed?: string[],
 ): string {
+  const kept = (printed ?? []).map(pretty).filter(Boolean);
+  if (kept.length > 0) return kept.join(' ');
+
   const parallel = stack?.parallel.trim() ?? '';
   const parts = [
-    printed?.year?.trim() || stack?.year || '',
-    printed?.product?.trim() || stack?.product || '',
+    stack?.year ?? '',
+    stack?.product ?? '',
     parallel.toLowerCase() === BASE_PARALLEL ? '' : parallel,
     name,
-    printed?.team?.trim() ?? '',
     cardNumber ?? '',
   ];
   return parts
@@ -55,7 +61,7 @@ export function composeTitle(
  * sticker number, and a row that renders as nothing looks like a bug.
  */
 export function cardLabel(card: Card, stack: Stack | undefined): string {
-  const title = composeTitle(stack, card.name, card.cardNumber);
+  const title = composeTitle(stack, card.name, card.cardNumber, card.printed);
   if (title !== '') return title;
   return card.number.trim() === '' ? 'Untitled card' : `Card ${card.number}`;
 }

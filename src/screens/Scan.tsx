@@ -23,11 +23,18 @@ import type { Route } from '../App';
  *
  * There is no "group scan" mode any more. It was a toggle that changed the
  * whole screen in order to do one thing — put every card in the same group —
- * which is just a field that remembers its last value. The group itself could
- * not be dropped: it supplies the year, product and parallel that the camera
- * cannot read, and those are what make the eBay comps query specific enough to
- * be worth looking at (lib/comps.ts). It carries to the next card until
- * changed, so a run through one stack is declared once and never again.
+ * which is just a field that remembers its last value, so that is what it is.
+ *
+ * WHAT THE CAMERA READ IS NOT PARSED. Vision returns each block of text with
+ * its own box, so the screen lists the blocks and lets the dealer untick the
+ * ones they do not want and edit the ones that need it. An earlier version
+ * sorted them into Year / Product / Team fields and that is guesswork: deciding
+ * which line is the team is wrong on every card whose layout differs, while the
+ * person holding the card can see it. What stays ticked is what the title and
+ * the eBay search are built from.
+ *
+ * The group still exists as a fallback for a card typed in with no photo, and
+ * for a parallel, which is the one thing a front rarely prints.
  *
  * The fast path survives all of it: a sticker number alone still files a card.
  * Every other field is optional and can be left for later.
@@ -40,25 +47,33 @@ export function Scan({ go }: { go: (r: Route) => void }) {
   const [groupId, setGroupId] = useState('');
   const [name, setName] = useState('');
   const [cardNumber, setCardNumber] = useState('');
-  const [year, setYear] = useState('');
-  const [product, setProduct] = useState('');
-  const [team, setTeam] = useState('');
   const [price, setPrice] = useState('');
   const [floor, setFloor] = useState('');
+
+  /**
+   * Every block of text the camera found, in printed order.
+   *
+   * `kept` starts TRUE on all of them: a good read should cost zero taps, and
+   * cleaning up a bad one costs a couple. The other way round would be a tap
+   * per line on every card of the night.
+   *
+   * These are not parsed into year / product / team. That was tried, and
+   * deciding which line is the team is guesswork that is wrong on every card
+   * whose layout differs — while the dealer is looking straight at the card.
+   */
+  const [sections, setSections] = useState<{ id: string; text: string; kept: boolean }[]>([]);
+  const [editingSection, setEditingSection] = useState<string | null>(null);
+
+  const keptText = sections.filter((s) => s.kept).map((s) => s.text.trim()).filter(Boolean);
 
   const [photo, setPhoto] = useState<{ blob: Blob; url: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [reading, setReading] = useState(false);
   /**
-   * Which fields currently hold what the CAMERA read rather than what the
-   * dealer typed. Drives the green styling and nothing else — the value itself
-   * lives in the field's own state, so a correction is an ordinary edit.
+   * Whether the name field currently holds what the CAMERA read rather than
+   * what the dealer typed. Drives the green styling and nothing else.
    */
-  const [read, setRead] = useState({
-    name: false, cardNumber: false, year: false, product: false, team: false,
-  });
-  const clearRead = (field: keyof typeof read) =>
-    setRead((r) => ({ ...r, [field]: false }));
+  const [read, setRead] = useState({ name: false });
   const [readError, setReadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [justAdded, setJustAdded] = useState<{ id: string; number: string; label: string } | null>(null);
@@ -74,9 +89,8 @@ export function Scan({ go }: { go: (r: Route) => void }) {
   const floorTooHigh = floorCents != null && priceCents != null && floorCents > priceCents;
 
   const stack: Stack | undefined = db.stacks.find((s) => s.id === groupId);
-  const printed = { year, product, team };
-  const title = composeTitle(stack, name, cardNumber || undefined, printed);
-  const searchable = name.trim() !== '' || product.trim() !== '' || stack !== undefined;
+  const title = composeTitle(stack, name, cardNumber || undefined, keptText);
+  const searchable = keptText.length > 0 || name.trim() !== '' || stack !== undefined;
 
   const ready = isValidNumber(number) && !dup && !busy && !floorTooHigh
     && (price.trim() === '' || (priceCents != null && priceCents > 0));
@@ -125,28 +139,24 @@ export function Scan({ go }: { go: (r: Route) => void }) {
         failure = err instanceof Error ? err.message : 'The card could not be read';
       }
 
-      // A read only ever FILLS an empty field. It never overwrites something
-      // already typed — a correction has to survive a retake.
-      const filled = { ...read };
-      const fill = (
-        value: string | undefined,
-        current: string,
-        set: (v: string) => void,
-        key: keyof typeof read,
-      ) => {
-        if (value && current.trim() === '') {
-          set(value);
-          filled[key] = true;
-        }
-      };
-      fill(result?.name, name, setName, 'name');
-      fill(result?.cardNumber, cardNumber, setCardNumber, 'cardNumber');
-      fill(result?.year, year, setYear, 'year');
-      fill(result?.product, product, setProduct, 'product');
-      fill(result?.team, team, setTeam, 'team');
-      setRead(filled);
+      // Every block it found, all switched on. The dealer unticks what they do
+      // not want and edits what needs editing — nothing here decides for them.
+      setSections((result?.lines ?? []).map((text, i) => ({
+        id: `${Date.now()}-${i}`, text, kept: true,
+      })));
+      setEditingSection(null);
 
-      if (!result?.name && !result?.cardNumber) {
+      // The name is the one value the read still fills into a field, because
+      // the Book and every list row need one short label per card and a pile of
+      // kept blocks is not that. It only ever fills an EMPTY field, so a typed
+      // correction survives a retake.
+      if (result?.name && name.trim() === '') {
+        setName(result.name);
+        setRead({ name: true });
+      }
+      if (result?.cardNumber && cardNumber.trim() === '') setCardNumber(result.cardNumber);
+
+      if (!result?.lines?.length) {
         setReadError(failure
           || 'Nothing readable on that photo — fill the frame with the card, flat light, '
            + 'no flash. Or just type the name.');
@@ -163,12 +173,11 @@ export function Scan({ go }: { go: (r: Route) => void }) {
     setPhoto(null);
     setName('');
     setCardNumber('');
-    setYear('');
-    setProduct('');
-    setTeam('');
     setPrice('');
     setFloor('');
-    setRead({ name: false, cardNumber: false, year: false, product: false, team: false });
+    setSections([]);
+    setEditingSection(null);
+    setRead({ name: false });
     setReadError(null);
     setError(null);
     if (cameraInput.current) cameraInput.current.value = '';
@@ -202,11 +211,9 @@ export function Scan({ go }: { go: (r: Route) => void }) {
       type: 'card/add', id, number: clean,
       name: name.trim(),
       cardNumber: cardNumber.trim() || undefined,
-      // Kept on the card itself, so the title and the eBay query stay specific
-      // whether or not the card was filed into a group.
-      year: year.trim() || undefined,
-      product: product.trim() || undefined,
-      team: team.trim() || undefined,
+      // The blocks the dealer kept, so the title and the eBay query stay
+      // specific whether or not the card was filed into a group.
+      printed: keptText.length > 0 ? keptText : undefined,
       stackId: groupId || undefined,
       photoId, now,
     });
@@ -316,59 +323,64 @@ export function Scan({ go }: { go: (r: Route) => void }) {
         </div>
       )}
 
-      {/* Everything the Book's card form has, so the Book is never a required stop. */}
-      <div className="titleprev">
-        <div className="k">Listing title</div>
-        <div className={`v${title.trim() === '' ? ' muted' : ''}`}>
-          {title.trim() === '' ? 'Fills in from the group and the name' : title}
+      {/*
+       * WHAT THE CAMERA FOUND, as it found it.
+       *
+       * Vision returns each block of text with its own box, so there is nothing
+       * to infer: the blocks are listed, all switched on, and the dealer unticks
+       * the ones they do not want and edits the ones that need it. What stays on
+       * is what the title and the eBay search are built from, which is why the
+       * search line below updates as they toggle.
+       */}
+      {sections.length > 0 && (
+        <>
+          <h2>
+            <span>Read from the card</span>
+            <span className="count">
+              {keptText.length === sections.length
+                ? `${sections.length} found`
+                : `${keptText.length} of ${sections.length} kept`}
+            </span>
+          </h2>
+          <div className="reads">
+            {sections.map((s) => (
+              editingSection === s.id ? (
+                <div className="rd edit" key={s.id}>
+                  <input autoFocus value={s.text} aria-label="Edit what was read"
+                         onChange={(e) => setSections((all) => all.map((x) =>
+                           x.id === s.id ? { ...x, text: e.target.value } : x))}
+                         onKeyDown={(e) => e.key === 'Enter' && setEditingSection(null)} />
+                  <button className="done" onClick={() => setEditingSection(null)}>Done</button>
+                </div>
+              ) : (
+                <div className={`rd${s.kept ? ' on' : ' off'}`} key={s.id}>
+                  <button className="tick" aria-pressed={s.kept}
+                          aria-label={s.kept ? `Drop ${s.text}` : `Keep ${s.text}`}
+                          onClick={() => setSections((all) => all.map((x) =>
+                            x.id === s.id ? { ...x, kept: !x.kept } : x))}>✓</button>
+                  <button className="txt" onClick={() => setEditingSection(s.id)}>{s.text}</button>
+                  <button className="x" aria-label={`Delete ${s.text}`}
+                          onClick={() => setSections((all) => all.filter((x) => x.id !== s.id))}>×</button>
+                </div>
+              )
+            ))}
+          </div>
+        </>
+      )}
+
+      {title.trim() !== '' && (
+        <div className="searchprev">
+          <div className="k">Searches eBay for</div>
+          <div className="v">{title}</div>
         </div>
-      </div>
+      )}
 
       <div className="card">
         <div className="field">
           <label htmlFor="s-name">Name on card</label>
           <input id="s-name" type="text" value={name} placeholder="Type the name"
                  className={read.name ? 'from-read' : undefined}
-                 onChange={(e) => { setName(e.target.value); clearRead('name'); }} />
-        </div>
-
-        {/*
-         * Everything else printed on the card. The camera fills these; a green
-         * field means it came from the read rather than from the dealer, and
-         * typing in one turns it back into an ordinary field.
-         *
-         * They are here because a bare player name is not a search. "Anthony
-         * Edwards" returns every card he has ever appeared on; "2023 Panini
-         * Prizm Anthony Edwards Timberwolves 58" returns the card in hand.
-         */}
-        <div className="grid2">
-          <div className="field">
-            <label htmlFor="s-year">Year</label>
-            <input id="s-year" type="tel" inputMode="numeric" value={year} placeholder="2023"
-                   className={read.year ? 'from-read' : undefined}
-                   onChange={(e) => { setYear(e.target.value); clearRead('year'); }} />
-          </div>
-          <div className="field">
-            <label htmlFor="s-product">Product / set</label>
-            <input id="s-product" type="text" value={product} placeholder="Panini Prizm"
-                   className={read.product ? 'from-read' : undefined}
-                   onChange={(e) => { setProduct(e.target.value); clearRead('product'); }} />
-          </div>
-        </div>
-
-        <div className="grid2">
-          <div className="field">
-            <label htmlFor="s-team">Team</label>
-            <input id="s-team" type="text" value={team} placeholder="Timberwolves"
-                   className={read.team ? 'from-read' : undefined}
-                   onChange={(e) => { setTeam(e.target.value); clearRead('team'); }} />
-          </div>
-          <div className="field">
-            <label htmlFor="s-cn">Card number</label>
-            <input id="s-cn" type="text" inputMode="numeric" value={cardNumber} placeholder="58"
-                   className={read.cardNumber ? 'from-read' : undefined}
-                   onChange={(e) => { setCardNumber(e.target.value); clearRead('cardNumber'); }} />
-          </div>
+                 onChange={(e) => { setName(e.target.value); setRead({ name: false }); }} />
         </div>
 
         <div className="grid2">
@@ -395,7 +407,7 @@ export function Scan({ go }: { go: (r: Route) => void }) {
         )}
 
         {searchable ? (
-          <a className="evidence" href={compsUrl(stack, name, cardNumber || undefined, printed)}
+          <a className="evidence" href={compsUrl(stack, name, cardNumber || undefined, keptText)}
              target="_blank" rel="noreferrer">
             <span>See eBay solds</span>
             <span className="why">real listings, new tab</span>
