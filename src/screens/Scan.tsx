@@ -65,21 +65,41 @@ export function Scan({ go }: { go: (r: Route) => void }) {
     // name is typeable, and the number and price never came from here anyway.
     setReading(true);
     try {
-      const { readCard, visionConfigured } = await import('../lib/vision-api');
-      if (!visionConfigured()) {
-        setReadError('Card reading is not set up on this build');
-        return;
-      }
       // Give the reader a better image than the one we keep: the stored copy is
       // compressed for a storage budget, and those artefacts are what break a
       // low-contrast foil name. Built from the ORIGINAL file, never from the
       // already-compressed blob — recompressing a compression is worse than either.
       const forReading = await downscale(file, READING);
-      const result = await readCard(forReading);
-      if (result.name === '' && result.cardNumber === '') {
-        setReadError('Nothing readable on that photo — try better light, or type the name');
-      } else {
+
+      // On-device first: free, private, and needs no account. Google Vision is
+      // only consulted when this finds nothing AND a key exists, so a build
+      // with no key is fully functional rather than degraded.
+      let result: CardRead | null = null;
+      let firstFailure = '';
+      try {
+        const { readCardOnDevice } = await import('../lib/ocr');
+        result = await readCardOnDevice(forReading);
+      } catch (err) {
+        firstFailure = err instanceof Error ? err.message : 'The card could not be read';
+      }
+
+      if (!result?.name) {
+        const { readCard, visionConfigured } = await import('../lib/vision-api');
+        if (visionConfigured()) {
+          try {
+            const better = await readCard(forReading);
+            if (better.name) result = better;
+          } catch (err) {
+            firstFailure ||= err instanceof Error ? err.message : '';
+          }
+        }
+      }
+
+      if (result?.name || result?.cardNumber) {
         setRead(result);
+      } else {
+        setReadError(firstFailure
+          || 'Nothing readable on that photo — try flatter light, or type the name');
       }
     } catch (err) {
       setReadError(err instanceof Error ? err.message : 'The card could not be read');
@@ -168,14 +188,18 @@ export function Scan({ go }: { go: (r: Route) => void }) {
           <div className="row" style={{ padding: 0 }}>
             <img className="thumb" src={photo.url} alt="The card you just photographed" />
             <span className="mid">
+              {/* Every outcome says which one it is. A read that found a number
+                  but no name used to fall through to "Photo ready", which is
+                  indistinguishable from no read at all. */}
               <span className="t">
                 {reading ? 'Reading the card…'
                   : read?.name ? read.name
+                  : read?.cardNumber ? `Card #${read.cardNumber} — no name found`
                   : 'Photo ready'}
               </span>
               <span className="s">
                 <span className="ctx">
-                  {reading ? 'Google Vision'
+                  {reading ? 'Reading on this device'
                     : read?.name ? `Read from the card${read.cardNumber ? ` · #${read.cardNumber}` : ''}`
                     : 'Files with this card'}
                 </span>

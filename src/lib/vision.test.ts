@@ -84,3 +84,92 @@ describe('pickCardText', () => {
     expect(pickCardText([{ description: 'ANTHONY EDWARDS' }]).name).toBe('Anthony Edwards');
   });
 });
+
+describe('pickCardText — card number sharing a line', () => {
+  it('finds a #-prefixed number inside a longer line', () => {
+    // Real cards print the team and the number on one baseline, so OCR
+    // returns them as a single line.
+    const read = pickCardText([
+      line('ANTHONY EDWARDS', 0, 100, 300, 44),
+      line('TIMBERWOLVES  #58', 0, 300, 200, 14),
+    ]);
+    expect(read.cardNumber).toBe('58');
+  });
+
+  it('finds a serial inside a longer line', () => {
+    const read = pickCardText([
+      line('ANTHONY EDWARDS', 0, 100, 300, 44),
+      line('SILVER PRIZM 12/99', 0, 300, 200, 14),
+    ]);
+    expect(read.cardNumber).toBe('12/99');
+  });
+
+  it('does not mistake a bare year for a card number', () => {
+    const read = pickCardText([
+      line('ANTHONY EDWARDS', 0, 100, 300, 44),
+      line('2023 PANINI PRIZM', 0, 300, 200, 14),
+    ]);
+    expect(read.cardNumber).toBe('');
+  });
+
+  it('still prefers a line that is only the number', () => {
+    const read = pickCardText([
+      line('ANTHONY EDWARDS', 0, 100, 300, 44),
+      line('#58', 0, 300, 30, 14),
+      line('TEAM 99/99', 0, 340, 60, 14),
+    ]);
+    expect(read.cardNumber).toBe('58');
+  });
+});
+
+describe('pickCardText — not inventing a card number from noise', () => {
+  it('ignores a lone digit when nothing looked like a name', () => {
+    // A foil card read produces junk fragments. "7" on its own is noise, and a
+    // wrong card number is worse than no card number.
+    expect(pickCardText([line('7', 10, 10, 8, 10)]).cardNumber).toBe('');
+  });
+
+  it('still trusts a #-prefixed number even with no name', () => {
+    expect(pickCardText([line('#58', 10, 10, 30, 12)]).cardNumber).toBe('58');
+  });
+
+  it('still trusts a serial even with no name', () => {
+    expect(pickCardText([line('12/99', 10, 10, 40, 12)]).cardNumber).toBe('12/99');
+  });
+
+  it('accepts a bare number once a real name is present', () => {
+    const read = pickCardText([
+      line('ANTHONY EDWARDS', 0, 100, 300, 44),
+      line('58', 10, 300, 20, 12),
+    ]);
+    expect(read.cardNumber).toBe('58');
+  });
+
+  it('reports nothing at all for a read that found only noise', () => {
+    expect(pickCardText([line('7', 0, 0, 8, 9), line('x', 20, 0, 6, 8)]))
+      .toEqual({ name: '', cardNumber: '' });
+  });
+});
+
+describe('pickCardText — a bare number beside the team', () => {
+  it('takes a bare number from the team line once a name is known', () => {
+    // OCR frequently drops the "#" glyph, leaving "TIMBERWOLVES 58".
+    const read = pickCardText([
+      line('ANTHONY EDWARDS', 0, 100, 300, 44),
+      line('TIMBERWOLVES 58', 0, 300, 200, 14),
+    ]);
+    expect(read.cardNumber).toBe('58');
+  });
+
+  it('never takes a year as the card number', () => {
+    const read = pickCardText([
+      line('ANTHONY EDWARDS', 0, 100, 300, 44),
+      line('TIMBERWOLVES 2023', 0, 300, 200, 14),
+    ]);
+    expect(read.cardNumber).toBe('');
+  });
+
+  it('takes nothing from a bare number when the read found no name', () => {
+    expect(pickCardText([line('TIMBERWOLVES 58', 0, 300, 200, 14)]).cardNumber).toBe('');
+  });
+});

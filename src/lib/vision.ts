@@ -35,8 +35,18 @@ const NOISE = [
   /\bnba\b/i, /\bnfl\b/i, /\bmlb\b/i, /\bnhl\b/i, /\brookie\b/i, /\bcard\b/i,
 ];
 
-/** "#58", "58/99", "12/99" — a printed card number or serial. */
+/** A whole line that is nothing but a card number: "#58", "12/99". */
 const CARD_NUMBER = /^#?(\d{1,4}(?:\s*\/\s*\d{1,4})?)$/;
+
+/**
+ * A card number sitting inside a longer line. Cards print the team and the
+ * number on one baseline, so OCR hands both back as a single line.
+ *
+ * Only #-prefixed numbers and n/n serials count. A bare run of digits is far
+ * more likely to be a year ("2023 PANINI PRIZM") than a card number, and a
+ * wrong number is worse than none.
+ */
+const EMBEDDED_NUMBER = /(?:#(\d{1,4})|\b(\d{1,4}\s*\/\s*\d{1,4})\b)/;
 
 const area = (a: VisionAnnotation): number => {
   const v = a.boundingPoly?.vertices;
@@ -68,20 +78,43 @@ export function pickCardText(annotations: VisionAnnotation[]): CardRead {
     .map((a) => ({ text: clean(a.description ?? ''), size: area(a) }))
     .filter((l) => l.text !== '');
 
-  const cardNumber = lines
-    .map((l) => CARD_NUMBER.exec(l.text)?.[1] ?? '')
+  // A "#" or an "n/n" serial is unambiguous — that is a card number and
+  // nothing else. Trust those on their own.
+  const strong = lines
+    .map((l) => {
+      const m = EMBEDDED_NUMBER.exec(l.text);
+      return m ? (m[1] ?? m[2] ?? '') : '';
+    })
     .find((n) => n !== '') ?? '';
+
+  /**
+   * Bare digits are only PROBABLY a card number, so they count only when the
+   * same read also produced a credible name — on a failed foil read the output
+   * is digit-shaped fragments, and one of those becoming "card #7" is worse
+   * than reporting nothing.
+   *
+   * Both a line that is only digits and digits sitting beside the team name
+   * qualify: OCR frequently drops the "#" glyph, leaving "TIMBERWOLVES 58".
+   * Years are excluded — every card carries one and it is never the number.
+   */
+  const isYear = (n: string) => /^(19|20)\d{2}$/.test(n);
+  const weak = lines
+    .flatMap((l) => l.text.split(/\s+/))
+    .map((token) => /^#?(\d{1,4})$/.exec(token)?.[1] ?? '')
+    .find((n) => n !== '' && !isYear(n)) ?? '';
 
   const nameCandidates = lines
     .filter((l) => !NOISE.some((re) => re.test(l.text)))
     .filter((l) => !CARD_NUMBER.test(l.text))
-    // A player has at least two words. One word is a set name or a team.
-    .filter((l) => l.text.split(/\s+/).filter(Boolean).length >= 2)
+    // A player has at least two ALPHABETIC words. Counting tokens alone lets
+    // "TIMBERWOLVES 58" pass as a name; counting words made of letters does
+    // not, and also rejects "PRIZM 58" and similar.
+    .filter((l) => l.text.split(/\s+/).filter((w) => /^[\p{L}'’-]{2,}$/u.test(w)).length >= 2)
     .sort((a, b) => b.size - a.size);
 
   const best = nameCandidates[0];
-  return {
-    name: best ? titleCase(best.text).replace(/\s+/g, ' ').trim() : '',
-    cardNumber: cardNumber.replace(/\s*\/\s*/, '/'),
-  };
+  const name = best ? titleCase(best.text).replace(/\s+/g, ' ').trim() : '';
+  const cardNumber = strong || (name !== '' ? weak : '');
+
+  return { name, cardNumber: cardNumber.replace(/\s*\/\s*/, '/') };
 }
