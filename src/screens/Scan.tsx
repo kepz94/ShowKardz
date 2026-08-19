@@ -72,40 +72,34 @@ export function Scan({ go }: { go: (r: Route) => void }) {
       const forReading = await downscale(file, READING);
 
       /*
-       * Vision FIRST when a key exists, on-device only as the no-key fallback.
+       * Google Vision is the only reader.
        *
-       * This order is from a real result, not a preference: on actual cards the
-       * on-device engine returned about three incoherent letters across five
-       * scans. That is what Tesseract is: a DOCUMENT OCR engine, built for flat
-       * high-contrast text on paper. A photograph of a card is scene text —
-       * textured background, perspective, glare, display fonts — which is a
-       * different problem, and the one Vision's TEXT_DETECTION is built for.
+       * An on-device engine (Tesseract) was tried and removed. It is a DOCUMENT
+       * OCR engine — it binarizes the image and hunts for lines of dark text on
+       * a light, uniform background, which is a scanned page. A card photo has a
+       * player picture and team colours behind the name, so that first stage
+       * produces mush and everything after it fails: about three incoherent
+       * letters across five real cards, base sets included.
        *
-       * So the on-device reader no longer runs ahead of Vision, costing a second
-       * and a battery hit to produce nothing.
+       * Vision's TEXT_DETECTION is a scene-text model — a learned detector finds
+       * text regions directly in a natural photo, so a busy background is not
+       * fatal. Verified against real cards before this was committed.
        */
       let result: CardRead | null = null;
       let firstFailure = '';
 
       const { readCard, visionConfigured } = await import('../lib/vision-api');
-      const haveVision = visionConfigured();
 
-      if (haveVision) {
-        try {
-          result = await readCard(forReading);
-        } catch (err) {
-          firstFailure = err instanceof Error ? err.message : 'The card could not be read';
-        }
+      if (!visionConfigured()) {
+        // Say so plainly. Silence here reads as "the feature is broken".
+        setReadError('Card reading is not set up yet — the photo is saved, type the name');
+        return;
       }
 
-      if (!result?.name) {
-        try {
-          const { readCardOnDevice } = await import('../lib/ocr');
-          const local = await readCardOnDevice(forReading);
-          if (local.name || (!haveVision && local.cardNumber)) result = local;
-        } catch (err) {
-          firstFailure ||= err instanceof Error ? err.message : '';
-        }
+      try {
+        result = await readCard(forReading);
+      } catch (err) {
+        firstFailure = err instanceof Error ? err.message : 'The card could not be read';
       }
 
       if (result?.name || result?.cardNumber) {

@@ -14,7 +14,7 @@ Cards carry a plain number sticker — nothing else. The price lives in the app,
 
 ## The five screens
 
-**Scan** — getting cards in, and nothing else. Type the sticker number, photograph the card and it reads the player name off it on-device — free, no account, no per-scan cost — next. No collection, no filters, no totals: everything that is not the next card is a reason to look up. Turn on **Group scan** and the running batch appears — that is the one case where seeing your other scans is the point.
+**Scan** — getting cards in, and nothing else. Type the sticker number, photograph the card and Google Vision reads the player name off it, next. No collection, no filters, no totals: everything that is not the next card is a reason to look up. Turn on **Group scan** and the running batch appears — that is the one case where seeing your other scans is the point.
 
 **Book** — the collection. Everything ever scanned, with its photo. Name, group, price and floor are filled in here, from the card's own screen: a link to real eBay sold listings, your price, an optional floor. Filter by state or by group, search by name or number.
 
@@ -119,15 +119,18 @@ Both invariants are enforced and covered by tests from day one:
 - **Sync is unverified on a real device.** The merge and change-detection rules are
   covered by tests, but two phones actually reconciling has not been observed —
   that pass is owed.
-- **Read accuracy is unmeasured on real cards.** On a synthetic high-contrast card
-  the on-device reader returns the player name in about a second. On a synthetic
-  low-contrast foil card it returns nothing — quickly and cleanly, but nothing.
-  Foil, refractors and stylised fonts have never been tried on real stock.
-- **The printed card number is unreliable.** The name is the field that works; the
-  card number is best-effort and did not survive synthetic text. It is deliberately
-  conservative — it would rather report nothing than invent a number from noise.
-- **Google Vision is an optional fallback**, used only when the on-device read finds
-  no name AND `VISION_API_KEY` is set as a repository secret. Nothing needs it.
+- **Card reading needs a key.** Google Vision is the only reader; it is inert until
+  `VISION_API_KEY` is set as a repository secret. Without it the app says reading is
+  not set up, keeps the photo, and the card still scans in — the name is typed.
+- **An on-device reader was tried and removed.** Tesseract is a document OCR engine:
+  it binarizes and hunts for lines of dark text on a light uniform background. A card
+  photo has a player picture and team colours behind the name, so that first stage
+  produces mush — about three incoherent letters across five real cards, base sets
+  included. Vision's TEXT_DETECTION is a scene-text model and reads the same cards
+  correctly; that was verified on real cards before this was committed.
+- **The printed card number is best-effort.** The name is the field that matters. The
+  number extraction is deliberately conservative — it would rather report nothing than
+  invent one from noise.
 - **Cash sales only.** The trade screen (two dials, who owes cash) is neither
   designed nor built. Hold tabs, lot mode and the dead-weight radar are not built.
 - **One stack at a time.** The night-before flow uses the most recently declared
