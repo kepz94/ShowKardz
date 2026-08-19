@@ -524,16 +524,24 @@ input.from-read{background:var(--money-soft);border-color:var(--money-line);
 .rd.off .pen{opacity:.5}
 .searchprev .v.muted{color:var(--mut);font-weight:500}
 
-/* Reorder controls. The order of the blocks is the order they land in the name,
-   so it is worth being able to change — arrows rather than drag, because drag
-   on touch inside a scrolling sheet fights the scroll. */
-.rd .move{flex:none;display:flex;flex-direction:column;gap:1px}
-.rd .move button{background:none;border:0;padding:0 4px;cursor:pointer;width:auto;
-                 font-size:12px;line-height:1.15;color:var(--ink2)}
-.rd .move button:disabled{color:var(--line2);cursor:default}
-.rd.off .move{opacity:.5}
 
 /* The card name holds the whole read once confirmed, so it needs the room. */
 textarea#s-name{resize:vertical;min-height:62px;line-height:1.4;font-size:15px}
 textarea#s-name.from-read{background:var(--money-soft);border-color:var(--money-line);
                           color:var(--money);font-weight:650}
+
+/* ---- the star ------------------------------------------------------------
+   Replaces up/down arrows, which were the wrong control for a phone: two tiny
+   targets per row, and moving a block three places cost six taps. A star is one
+   tap meaning "this leads". Stars keep the order they were given in, so a
+   second star lands behind the first; everything unstarred follows in printed
+   order. The little number only shows once more than one is starred, which is
+   the only time the order is ambiguous. */
+.rd .star{flex:none;position:relative;background:none;border:0;cursor:pointer;width:auto;
+          padding:4px 3px;font-size:19px;line-height:1;color:var(--line2)}
+.rd .star.on{color:#C8901B}
+.rd .star .ord{position:absolute;right:-2px;bottom:1px;font-size:9px;font-weight:800;
+               font-family:var(--mono);color:var(--ink);background:var(--paper);
+               border:1px solid var(--line2);border-radius:999px;
+               min-width:13px;height:13px;line-height:11px;text-align:center}
+.rd.off .star{opacity:.4}

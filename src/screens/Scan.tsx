@@ -5,6 +5,7 @@ import { liveCards } from '../lib/cards';
 import { downscale, READING } from '../lib/images';
 import { putPhoto } from '../lib/photos';
 import { prettyBlock } from '../lib/title';
+import { orderByStar, toggleStar } from '../lib/stars';
 import { compsUrl } from '../lib/comps';
 import { dollarsToCents, formatCents } from '../lib/money';
 import type { CardRead } from '../lib/vision';
@@ -66,7 +67,9 @@ export function Scan({ go }: { go: (r: Route) => void }) {
    * deciding which line is the team is guesswork that is wrong on every card
    * whose layout differs — while the dealer is looking straight at the card.
    */
-  const [sections, setSections] = useState<{ id: string; text: string; kept: boolean }[]>([]);
+  const [sections, setSections] = useState<
+    { id: string; text: string; kept: boolean; star: number | null }[]
+  >([]);
   const [editingSection, setEditingSection] = useState<string | null>(null);
   /**
    * The read lands in a confirmation sheet rather than straight onto the form.
@@ -76,24 +79,16 @@ export function Scan({ go }: { go: (r: Route) => void }) {
    */
   const [confirmRead, setConfirmRead] = useState(false);
 
-  const keptText = sections.filter((s) => s.kept).map((s) => s.text.trim()).filter(Boolean);
+  /* Starred first in the order they were starred, then printed order. lib/stars.ts. */
+  const ordered = orderByStar(sections);
 
-  /** The name the kept blocks make, in the order they are currently in. */
+  const keptText = ordered.filter((s) => s.kept).map((s) => s.text.trim()).filter(Boolean);
+
+  /** The name the kept blocks make, in starred-then-printed order. */
   const composedName = keptText.map(prettyBlock).filter(Boolean).join(' ');
 
-  /** Swap a block with its neighbour. Order here is order in the name. */
-  const move = (i: number, dir: -1 | 1) =>
-    setSections((all) => {
-      const j = i + dir;
-      if (j < 0 || j >= all.length) return all;
-      const next = all.slice();
-      const a = next[i];
-      const b = next[j];
-      if (!a || !b) return all;
-      next[i] = b;
-      next[j] = a;
-      return next;
-    });
+  const starCount = sections.filter((s) => s.star != null).length;
+  const star = (id: string) => setSections((all) => toggleStar(all, id));
 
   const [photo, setPhoto] = useState<{ blob: Blob; url: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -171,7 +166,7 @@ export function Scan({ go }: { go: (r: Route) => void }) {
       // Every block it found, all switched on. The dealer unticks what they do
       // not want and edits what needs editing — nothing here decides for them.
       setSections((result?.lines ?? []).map((text, i) => ({
-        id: `${Date.now()}-${i}`, text, kept: true,
+        id: `${Date.now()}-${i}`, text, kept: true, star: null,
       })));
       setEditingSection(null);
       if (result?.lines?.length) setConfirmRead(true);
@@ -285,11 +280,7 @@ export function Scan({ go }: { go: (r: Route) => void }) {
    * The row says "Edit" in words. A tappable-looking string of text is not an
    * obvious edit affordance on a screen where most text is just text.
    */
-  const sectionRow = (
-    s: { id: string; text: string; kept: boolean },
-    i: number,
-    all: typeof sections,
-  ) => (
+  const sectionRow = (s: typeof sections[number]) => (
     editingSection === s.id ? (
       <div className="rd edit" key={s.id}>
         <input autoFocus value={s.text} aria-label="Edit what was read"
@@ -305,13 +296,17 @@ export function Scan({ go }: { go: (r: Route) => void }) {
                 onClick={() => setSections((xs) => xs.map((x) =>
                   x.id === s.id ? { ...x, kept: !x.kept } : x))}>✓</button>
         <button className="txt" onClick={() => setEditingSection(s.id)}>{s.text}</button>
-        {/* Order is the order it lands in the name, so it is worth changing. */}
-        <span className="move">
-          <button disabled={i === 0} aria-label={`Move ${s.text} up`}
-                  onClick={() => move(i, -1)}>↑</button>
-          <button disabled={i === all.length - 1} aria-label={`Move ${s.text} down`}
-                  onClick={() => move(i, 1)}>↓</button>
-        </span>
+        {/* One tap to put a block in front. The number only appears once there
+            is more than one star, because that is when order is ambiguous. */}
+        <button className={`star${s.star != null ? ' on' : ''}`}
+                aria-pressed={s.star != null}
+                aria-label={s.star != null ? `Unstar ${s.text}` : `Put ${s.text} first`}
+                onClick={() => star(s.id)}>
+          {s.star != null ? '★' : '☆'}
+          {s.star != null && starCount > 1 && (
+            <span className="ord">{ordered.filter((x) => x.star != null).findIndex((x) => x.id === s.id) + 1}</span>
+          )}
+        </button>
         <button className="pen" aria-label={`Edit ${s.text}`}
                 onClick={() => setEditingSection(s.id)}>Edit</button>
         <button className="x" aria-label={`Delete ${s.text}`}
@@ -542,7 +537,7 @@ export function Scan({ go }: { go: (r: Route) => void }) {
             </div>
 
             <div className="sbody">
-              <div className="reads">{sections.map(sectionRow)}</div>
+              <div className="reads">{ordered.map(sectionRow)}</div>
 
               <div className="searchprev" style={{ marginTop: 12 }}>
                 <div className="k">Becomes the card name</div>
