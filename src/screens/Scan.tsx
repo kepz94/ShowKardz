@@ -100,7 +100,7 @@ export function Scan({ go }: { go: (r: Route) => void }) {
   const [read, setRead] = useState({ name: false });
   const [readError, setReadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [justAdded, setJustAdded] = useState<{ id: string; number: string; label: string } | null>(null);
+  const [justAdded, setJustAdded] = useState<{ number: string; label: string } | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
 
   const numberField = useRef<HTMLInputElement>(null);
@@ -256,18 +256,11 @@ export function Scan({ go }: { go: (r: Route) => void }) {
     }
 
     setJustAdded({
-      id, number: clean,
+      number: clean,
       label: name.trim() !== '' ? name.trim() : 'Unnamed',
     });
     clearForm();
     setBusy(false);
-  }
-
-  function undoLast() {
-    if (!justAdded) return;
-    dispatch({ type: 'card/delete', cardId: justAdded.id, now: nowIso() });
-    setJustAdded(null);
-    numberField.current?.focus();
   }
 
   const pending = number !== '' || name !== '' || price !== '' || floor !== '' || photo !== null;
@@ -503,9 +496,7 @@ export function Scan({ go }: { go: (r: Route) => void }) {
         <div className="flash ok justadded">
           <div>
             <div className="b">{justAdded.number} · {justAdded.label} — in the book</div>
-            <div className="s">Next card, or undo if that was wrong.</div>
           </div>
-          <button className="undo" onClick={undoLast}>Undo</button>
         </div>
       )}
 

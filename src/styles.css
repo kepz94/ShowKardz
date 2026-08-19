@@ -431,11 +431,9 @@ input.from-read{background:var(--money-soft);border-color:var(--money-line);
          cursor:pointer}
 .discard:hover{background:#F7E2DA}
 
-/* The confirmation that a card went in, with the undo it needs to be safe. */
+/* The confirmation that a card went in. Just says so — a card that is in the
+   book is not a mistake to be walked back, and the Book has a real delete. */
 .flash.ok.justadded{align-items:center}
-.flash .undo{flex:none;margin-left:auto;background:none;border:0;color:var(--money);
-             font-size:13px;font-weight:700;text-decoration:underline;text-underline-offset:3px;
-             cursor:pointer;padding:4px 2px}
 
 /* ---- confirm dialog ------------------------------------------------------
    Deleting is the one destructive act in the app, so it never happens on a
