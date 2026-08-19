@@ -48,13 +48,92 @@ const CARD_NUMBER = /^#?(\d{1,4}(?:\s*\/\s*\d{1,4})?)$/;
  */
 const EMBEDDED_NUMBER = /(?:#(\d{1,4})|\b(\d{1,4}\s*\/\s*\d{1,4})\b)/;
 
-const area = (a: VisionAnnotation): number => {
+interface Box { x0: number; x1: number; y0: number; y1: number }
+
+const box = (a: VisionAnnotation): Box | null => {
   const v = a.boundingPoly?.vertices;
-  if (!v || v.length < 3) return 0;
+  if (!v || v.length < 3) return null;
   const xs = v.map((p) => p.x ?? 0);
   const ys = v.map((p) => p.y ?? 0);
-  return (Math.max(...xs) - Math.min(...xs)) * (Math.max(...ys) - Math.min(...ys));
+  return { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
 };
+
+const area = (a: VisionAnnotation): number => {
+  const b = box(a);
+  return b ? (b.x1 - b.x0) * (b.y1 - b.y0) : 0;
+};
+
+/**
+ * Rebuild lines from words. THIS IS THE FIX FOR THE READ THAT NEVER WORKED.
+ *
+ * Vision's `textAnnotations` returns the whole block at index 0 and then **one
+ * entry per WORD** — not per line. `pickCardText` picks a name by requiring two
+ * or more alphabetic words in a single entry, which one word can never satisfy,
+ * so the name came back empty on every card ever scanned and the screen said
+ * "nothing readable on that photo". The unit tests missed it because the
+ * fixture helper was named `line()` and fed whole phrases as one annotation —
+ * a response shape Google does not send.
+ *
+ * Words are grouped by vertical band. A card photographed by hand is near
+ * enough axis-aligned for that, and the tolerance scales with glyph height so a
+ * 40px name and a 12px team line stay separate. Within a band words are ordered
+ * left to right and the boxes unioned, which also gives `area()` the full
+ * printed width of the name — the thing the size heuristic below is actually
+ * reasoning about.
+ */
+export function groupIntoLines(words: VisionAnnotation[]): VisionAnnotation[] {
+  const boxed = words.map((w) => ({ w, b: box(w) }));
+
+  // An annotation with no geometry cannot be banded with anything. It survives
+  // as its own line rather than being dropped — losing text here would be a
+  // silent read failure, which is the exact class of bug this function fixes.
+  const loose = boxed.filter((e) => e.b === null).map((e) => e.w);
+
+  const placed = boxed
+    .filter((e): e is { w: VisionAnnotation; b: Box } => e.b !== null)
+    .sort((a, b) => (a.b.y0 + a.b.y1) - (b.b.y0 + b.b.y1));
+
+  const lines: { parts: { w: VisionAnnotation; b: Box }[]; b: Box }[] = [];
+
+  for (const entry of placed) {
+    const cy = (entry.b.y0 + entry.b.y1) / 2;
+    const open = lines.find((l) => {
+      const lcy = (l.b.y0 + l.b.y1) / 2;
+      // Half the taller of the two glyph heights: generous enough for a
+      // baseline that drifts across a handheld shot, tight enough that a
+      // separate line of smaller type stays its own line.
+      const tol = Math.max(entry.b.y1 - entry.b.y0, l.b.y1 - l.b.y0) * 0.5;
+      return Math.abs(cy - lcy) <= tol;
+    });
+
+    if (open) {
+      open.parts.push(entry);
+      open.b = {
+        x0: Math.min(open.b.x0, entry.b.x0), x1: Math.max(open.b.x1, entry.b.x1),
+        y0: Math.min(open.b.y0, entry.b.y0), y1: Math.max(open.b.y1, entry.b.y1),
+      };
+    } else {
+      lines.push({ parts: [entry], b: { ...entry.b } });
+    }
+  }
+
+  const joined: VisionAnnotation[] = lines.map((l) => ({
+    description: l.parts
+      .slice()
+      .sort((a, b) => a.b.x0 - b.b.x0)
+      .map((p) => p.w.description ?? '')
+      .join(' ')
+      .trim(),
+    boundingPoly: {
+      vertices: [
+        { x: l.b.x0, y: l.b.y0 }, { x: l.b.x1, y: l.b.y0 },
+        { x: l.b.x1, y: l.b.y1 }, { x: l.b.x0, y: l.b.y1 },
+      ],
+    },
+  }));
+
+  return [...joined, ...loose];
+}
 
 /** Cards shout. "ANTHONY EDWARDS" is a name, not an acronym. */
 function titleCase(text: string): string {
@@ -69,12 +148,16 @@ const clean = (text: string): string => text.replace(/[^\p{L}\p{N}\s'./#-]/gu, '
 /**
  * Reduce a Vision text response to the two fields worth keeping.
  *
+ * Takes the WORD-level annotations Vision actually returns (everything after
+ * `textAnnotations[0]`) and groups them into lines first — see groupIntoLines
+ * above for why that step is load-bearing rather than cosmetic.
+ *
  * The name is chosen by printed SIZE, not by position: layouts differ wildly
  * between products, but the player's name is reliably the largest real text on
  * the front. Boilerplate is filtered first so a big "PANINI" cannot win.
  */
 export function pickCardText(annotations: VisionAnnotation[]): CardRead {
-  const lines = annotations
+  const lines = groupIntoLines(annotations)
     .map((a) => ({ text: clean(a.description ?? ''), size: area(a) }))
     .filter((l) => l.text !== '');
 
