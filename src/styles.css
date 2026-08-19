@@ -583,3 +583,38 @@ textarea#s-name.from-read{background:var(--money-soft);border-color:var(--money-
         white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .chk .s{display:block;font-size:12.5px;color:var(--mut);margin-top:2px;
         white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ---- the sticker number, taken off the read --------------------------------
+   The sticker is on the sleeve when the photo is taken, so its number comes
+   back as one of the blocks. Tapping # makes it the card's number instead of
+   something to retype.
+
+   An assigned block is NOT part of the title any more, so its row loses the
+   controls that only mean something for a title block — nothing to keep,
+   nothing to order, nothing to drop. Edit stays, because a misread is fixed
+   rather than worked around. */
+.rd .hash{flex:none;width:27px;height:27px;padding:0;border-radius:7px;
+          border:1.5px solid var(--line2);background:var(--paper);color:var(--mut);
+          font-family:var(--mono);font-size:14px;font-weight:800;line-height:1;cursor:pointer}
+.rd .hash:hover{border-color:var(--ink);color:var(--ink)}
+.rd.off .hash{opacity:.4}
+/* NO SPACER ON A ROW WITHOUT A #, measured rather than guessed. Holding the
+   column open with an empty 27px box looked tidier and cost 37px of block
+   text: at 390px "ANTHONY EDWARDS" needs 188px and gets exactly 188px today,
+   so the spacer clipped it to 151px — a player's name, truncated, to line up
+   a control that is not there. The name matters more than the column. */
+
+.rd.assigned{background:#0B3B28;color:#fff;padding-top:11px;padding-bottom:11px}
+.rd.assigned .mark{flex:none;font-family:var(--mono);font-size:15px;font-weight:800;
+                   color:#8FD4B2;width:24px;text-align:center}
+.rd.assigned .txt{color:#fff;font-weight:700}
+.rd.assigned .tag{flex:none;font-size:9px;font-weight:800;letter-spacing:.12em;
+                  text-transform:uppercase;color:#0B3B28;background:#8FD4B2;
+                  border-radius:var(--r-pill);padding:4px 9px}
+.rd.assigned .pen{color:rgba(255,255,255,.72)}
+.rd.assigned .pen:hover{color:#fff}
+.rd.assigned .undo{flex:none;background:rgba(255,255,255,.12);
+                   border:1px solid rgba(255,255,255,.26);color:#fff;
+                   font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+                   border-radius:var(--r-pill);padding:6px 11px;cursor:pointer;width:auto}
+.rd.assigned .undo:hover{background:rgba(255,255,255,.2)}

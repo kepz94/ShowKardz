@@ -6,6 +6,7 @@ import { downscale, READING } from '../lib/images';
 import { putPhoto } from '../lib/photos';
 import { prettyBlock } from '../lib/title';
 import { orderByStar, toggleStar } from '../lib/stars';
+import { stickerCandidate, titleBlocks } from '../lib/stickers';
 import { compsUrl } from '../lib/comps';
 import { dollarsToCents, formatCents } from '../lib/money';
 import type { CardRead } from '../lib/vision';
@@ -79,16 +80,50 @@ export function Scan({ go }: { go: (r: Route) => void }) {
    */
   const [confirmRead, setConfirmRead] = useState(false);
 
+  /**
+   * The block the dealer pointed at as the sticker number, if any.
+   *
+   * The sticker is on the sleeve when the photo is taken, so its number is
+   * usually sitting right there in the read. Tapping # on it beats retyping
+   * digits that are already on screen.
+   */
+  const [numberFrom, setNumberFrom] = useState<string | null>(null);
+
   /* Starred first in the order they were starred, then printed order. lib/stars.ts. */
   const ordered = orderByStar(sections);
 
-  const keptText = ordered.filter((s) => s.kept).map((s) => s.text.trim()).filter(Boolean);
+  /**
+   * The blocks that are still part of the card's title.
+   *
+   * A sticker number is how this card is FOUND, not what it IS, so the block
+   * that became one drops out here — and because the name, the blocks saved on
+   * the record and the eBay query are all built from keptText below, it drops
+   * out of all three at once.
+   */
+  const titled = titleBlocks(ordered, numberFrom);
+
+  const keptText = titled.filter((s) => s.kept).map((s) => s.text.trim()).filter(Boolean);
 
   /** The name the kept blocks make, in starred-then-printed order. */
   const composedName = keptText.map(prettyBlock).filter(Boolean).join(' ');
 
-  const starCount = sections.filter((s) => s.star != null).length;
+  const starCount = titled.filter((s) => s.star != null).length;
   const star = (id: string) => setSections((all) => toggleStar(all, id));
+
+  /**
+   * Point at a block to make it the sticker number. One sticker, one card, so
+   * assigning a second block releases the first.
+   */
+  const assignNumber = (id: string, text: string) => {
+    setNumberFrom(id);
+    setNumber(stickerCandidate(text).digits);
+  };
+
+  /** Give the block back to the title, and empty the field it filled. */
+  const releaseNumber = () => {
+    setNumberFrom(null);
+    setNumber('');
+  };
 
   const [photo, setPhoto] = useState<{ blob: Blob; url: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -168,6 +203,10 @@ export function Scan({ go }: { go: (r: Route) => void }) {
       setSections((result?.lines ?? []).map((text, i) => ({
         id: `${Date.now()}-${i}`, text, kept: true, star: null,
       })));
+      // A retake builds new blocks with new ids, so any sticker assignment made
+      // against the old read is pointing at nothing. Drop it rather than let it
+      // silently miss — the number it filled in stays, and is now typed.
+      setNumberFrom(null);
       setEditingSection(null);
       if (result?.lines?.length) setConfirmRead(true);
 
@@ -201,6 +240,7 @@ export function Scan({ go }: { go: (r: Route) => void }) {
     setPrice('');
     setFloor('');
     setSections([]);
+    setNumberFrom(null);
     setEditingSection(null);
     setConfirmRead(false);
     setRead({ name: false });
@@ -282,6 +322,26 @@ export function Scan({ go }: { go: (r: Route) => void }) {
                onKeyDown={(e) => e.key === 'Enter' && setEditingSection(null)} />
         <button className="done" onClick={() => setEditingSection(null)}>Done</button>
       </div>
+    ) : s.id === numberFrom ? (
+      /*
+       * This block is the sticker number now, so it is no longer a piece of the
+       * card's title — and the row says so by losing every control that only
+       * makes sense for one. There is nothing to keep, nothing to order, and
+       * nothing to drop: it belongs to the number at the top of the screen.
+       *
+       * Edit survives, because a misread is fixed here rather than worked
+       * around. What the field will actually hold is the digits, shown full
+       * size in the band, so a wrong read is visible before the card is filed.
+       */
+      <div className="rd assigned" key={s.id}>
+        <span className="mark" aria-hidden>#</span>
+        <button className="txt" onClick={() => setEditingSection(s.id)}>{s.text}</button>
+        <span className="tag">Sticker</span>
+        <button className="pen" aria-label={`Edit ${s.text}`}
+                onClick={() => setEditingSection(s.id)}>Edit</button>
+        <button className="undo" onClick={releaseNumber}
+                aria-label={`Stop using ${s.text} as the sticker number`}>Undo</button>
+      </div>
     ) : (
       <div className={`rd${s.kept ? ' on' : ' off'}`} key={s.id}>
         <button className="tick" aria-pressed={s.kept}
@@ -297,9 +357,22 @@ export function Scan({ go }: { go: (r: Route) => void }) {
                 onClick={() => star(s.id)}>
           {s.star != null ? '★' : '☆'}
           {s.star != null && starCount > 1 && (
-            <span className="ord">{ordered.filter((x) => x.star != null).findIndex((x) => x.id === s.id) + 1}</span>
+            <span className="ord">{titled.filter((x) => x.star != null).findIndex((x) => x.id === s.id) + 1}</span>
           )}
         </button>
+        {/*
+          * The sticker is on the sleeve when the photo is taken, so its number
+          * is usually right here in the read. Tap # and it becomes the card's
+          * number instead of something to retype.
+          *
+          * Only blocks with a digit in them get one, and a row without it gets
+          * no spacer standing in — see styles.css. Holding the column open cost
+          * 37px of block text and clipped a two-word player name at 390px.
+          */}
+        {stickerCandidate(s.text).offerable && (
+          <button className="hash" onClick={() => assignNumber(s.id, s.text)}
+                  aria-label={`Use ${s.text} as the sticker number`}>#</button>
+        )}
         <button className="pen" aria-label={`Edit ${s.text}`}
                 onClick={() => setEditingSection(s.id)}>Edit</button>
         <button className="x" aria-label={`Delete ${s.text}`}
@@ -368,7 +441,13 @@ export function Scan({ go }: { go: (r: Route) => void }) {
           <input id="scan-num" ref={numberField} className="band-input" type="tel"
                  inputMode="numeric" value={number} autoFocus enterKeyHint="next"
                  placeholder="0455"
-                 onChange={(e) => { setNumber(e.target.value); setJustAdded(null); }} />
+                 onChange={(e) => {
+                   setNumber(e.target.value);
+                   setJustAdded(null);
+                   // Typing wins. If a block was standing in for this number it
+                   // is not the sticker any more, so it goes back to the title.
+                   setNumberFrom(null);
+                 }} />
           <div className={`echo${dup ? ' bad' : ''}`}>
             {dup ? `${normalizeNumber(number)} is already on a card`
               : number === '' ? 'Type it off the sticker'
@@ -524,7 +603,7 @@ export function Scan({ go }: { go: (r: Route) => void }) {
                   Everything is kept. Untick what you don’t want, tap Edit to fix a line.
                 </p>
               </div>
-              <span className="cnt">{keptText.length}/{sections.length}</span>
+              <span className="cnt">{keptText.length}/{titled.length}</span>
             </div>
 
             <div className="sbody">
@@ -556,7 +635,7 @@ export function Scan({ go }: { go: (r: Route) => void }) {
                         setConfirmRead(false);
                       }}>
                 Keep these
-                <span className="sub">{keptText.length} of {sections.length}</span>
+                <span className="sub">{keptText.length} of {titled.length}</span>
               </button>
             </div>
           </div>
