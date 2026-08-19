@@ -12,9 +12,11 @@ Strictly seller-side. No marketplace. Free to run.
 
 Cards carry a plain number sticker — nothing else. The price lives in the app, so stickers never go stale and repricing is a database edit instead of a re-sticker job. At home on wifi you scan the stack with your phone, declare what the camera can't read (year, product, parallel), check real eBay sold listings, and set your price. At the show you type the numbers off the stickers, and the app does the deal math offline. At close you get card-level books and a count of what should still be in the case.
 
-## The four screens
+## The five screens
 
-**Cards** — the book. Type the sticker number and the card exists; that is the only required field. Name, group and price are filled in afterwards, from the card's own screen: a link to real eBay sold listings, your price, an optional floor. Filter by unpriced / in case / sold, search by name or number.
+**Scan** — getting cards in, and nothing else. Type the sticker number, optionally photograph the card, next. No collection, no filters, no totals: everything that is not the next card is a reason to look up. Turn on **Group scan** and the running batch appears — that is the one case where seeing your other scans is the point.
+
+**Book** — the collection. Everything ever scanned, with its photo. Name, group, price and floor are filled in here, from the card's own screen: a link to real eBay sold listings, your price, an optional floor. Filter by state or by group, search by name or number.
 
 **Groups are optional and opt-in.** A group supplies year, product and parallel to every card in it, so titles compose themselves — but nothing needs one, they appear only once you create one, and a card can be moved in or out at any time.
 

@@ -70,6 +70,12 @@ export interface Card {
   /** Least the dealer would take, in whole cents. Optional per card. */
   floorCents?: number;
   status: CardStatus;
+  /**
+   * Key into the device's photo store, if the card was photographed. Like
+   * receipt images, the picture stays on the device that took it and only this
+   * reference travels — see ADR-001.
+   */
+  photoId?: string;
   /** Set when status becomes 'sold'. */
   soldAt?: Timestamp;
   /** What it actually realized, in whole cents. Set with status 'sold'. */

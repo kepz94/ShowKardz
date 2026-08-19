@@ -14,10 +14,10 @@ import { mergeDb } from './sync/merge-db';
 
 export type Action =
   | { type: 'stack/add'; id: string; year: string; product: string; parallel: string; now: string }
-  | { type: 'card/add'; id: string; stackId?: string; number: string; name: string; cardNumber?: string; now: string }
+  | { type: 'card/add'; id: string; stackId?: string; number: string; name: string; cardNumber?: string; photoId?: string; now: string }
   | { type: 'card/price'; cardId: string; priceCents: number; floorCents?: number; now: string }
   /** stackId: a string assigns a group, null removes one, undefined leaves it. */
-  | { type: 'card/edit'; cardId: string; number?: string; name?: string; cardNumber?: string; stackId?: string | null; now: string }
+  | { type: 'card/edit'; cardId: string; number?: string; name?: string; cardNumber?: string; stackId?: string | null; photoId?: string; now: string }
   | { type: 'receipt/add'; id: string; amountCents: number; category: ExpenseCategory; note: string; photoId?: string; now: string }
   | { type: 'receipt/delete'; id: string; now: string }
   | { type: 'deal/record'; id: string; cardIds: string[]; agreedCents: number; now: string }
@@ -52,7 +52,7 @@ export function reducer(db: DB, action: Action): DB {
 
       const card: Card = {
         id: action.id, number: action.number, name: action.name,
-        cardNumber: action.cardNumber, stackId: action.stackId,
+        cardNumber: action.cardNumber, stackId: action.stackId, photoId: action.photoId,
         status: 'unpriced', createdAt: action.now, updatedAt: action.now,
       };
       return { ...db, cards: [...db.cards, card] };
@@ -96,6 +96,7 @@ export function reducer(db: DB, action: Action): DB {
                 cardNumber: action.cardNumber ?? c.cardNumber,
                 // null is an explicit "no group"; undefined means leave it be.
                 stackId: action.stackId === null ? undefined : (action.stackId ?? c.stackId),
+                photoId: action.photoId ?? c.photoId,
                 updatedAt: action.now,
               }
             : c,

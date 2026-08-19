@@ -300,3 +300,34 @@ input[type=range]{width:100%;margin:12px 0 0;accent-color:var(--ink);height:28px
 .syncbar.error{background:var(--alert-soft);border-color:var(--alert-line)}
 .syncbar.error .dot{background:var(--alert)}
 .syncbar.error .text{color:var(--alert)}
+
+/* ---- five tabs -----------------------------------------------------------
+   One more than before, so the labels get tighter and the icons carry more. */
+.tabbar .inner{grid-template-columns:repeat(5,1fr)}
+.tabbar button{font-size:10px;gap:3px;padding:8px 2px 9px}
+.tabbar button svg{width:22px;height:22px}
+
+/* ---- the scan field ------------------------------------------------------
+   The number is the whole screen here, so it is typed straight into the band
+   rather than into a form field below it. */
+/* Specificity, deliberately: the base `input[type=tel]` rule is (0,1,1) and
+   would otherwise paint this field white-on-white inside the dark band. */
+.band input.band-input{
+  width:100%;margin-top:7px;background:transparent;border:0;padding:0;
+  color:#fff;font-family:var(--mono);font-size:37px;font-weight:700;letter-spacing:.14em;
+  line-height:1.05;
+}
+.band input.band-input::placeholder{color:rgba(255,255,255,.28)}
+.band input.band-input:focus{outline:none;background:transparent}
+.band input.band-input:focus-visible{outline:2px solid rgba(255,255,255,.6);outline-offset:6px;border-radius:4px}
+
+/* ---- switch --------------------------------------------------------------- */
+.switch{display:flex;align-items:flex-start;gap:11px;cursor:pointer;
+        text-transform:none;letter-spacing:0;font-size:inherit;color:inherit;margin:0}
+.switch input{width:22px;height:22px;flex:none;margin:1px 0 0;accent-color:var(--ink)}
+.switch .t{display:block;font-size:15px;font-weight:600;letter-spacing:-.01em}
+.switch .s{display:block;font-size:12.5px;color:var(--mut);margin-top:2px}
+
+/* An inline sub-form: used where navigating away would discard unsaved work. */
+.subform{margin-top:11px;padding:13px;border:1px dashed var(--line2);
+         border-radius:var(--r-md);background:var(--raised)}

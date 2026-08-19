@@ -86,11 +86,11 @@ export function Show({ go }: { go: (r: Route) => void }) {
           <div className="empty">
             <div className="t">Nothing priced yet</div>
             <div className="s">
-              A card can only be sold once it has a price. Set prices in Cards and they land here.
+              A card can only be sold once it has a price. Price them in the Book and they land here.
             </div>
             <button className="btn sm" style={{ marginTop: 14, width: 'auto', display: 'inline-flex' }}
-                    onClick={() => go('cards')}>
-              Go to Cards
+                    onClick={() => go('book')}>
+              Go to the Book
             </button>
           </div>
         </div>

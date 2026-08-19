@@ -235,3 +235,26 @@ describe('card/edit — filling in what was skipped', () => {
     expect(db.cards[0]!.number).toBe('0455');
   });
 });
+
+describe('card photos', () => {
+  it('keeps the photo reference from a scan', () => {
+    const db = reducer(EMPTY_DB, {
+      type: 'card/add', id: 'c1', number: '0455', name: '', photoId: 'p1', now: NOW,
+    });
+    expect(db.cards[0]!.photoId).toBe('p1');
+  });
+
+  it('attaches a photo to a card that was scanned without one', () => {
+    let db = reducer(EMPTY_DB, { type: 'card/add', id: 'c1', number: '0455', name: '', now: NOW });
+    db = reducer(db, { type: 'card/edit', cardId: 'c1', photoId: 'p1', now: NOW });
+    expect(db.cards[0]!.photoId).toBe('p1');
+  });
+
+  it('leaves an existing photo alone on an unrelated edit', () => {
+    let db = reducer(EMPTY_DB, {
+      type: 'card/add', id: 'c1', number: '0455', name: '', photoId: 'p1', now: NOW,
+    });
+    db = reducer(db, { type: 'card/edit', cardId: 'c1', name: 'Edwards', now: NOW });
+    expect(db.cards[0]!.photoId).toBe('p1');
+  });
+});
