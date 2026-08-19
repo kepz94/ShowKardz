@@ -12,12 +12,15 @@ import { liveCards } from './cards';
 import { splitByWeight, sumAsks } from './money';
 import { cardLabel } from './title';
 import { mergeDb } from './sync/merge-db';
+import { togglePacked } from './packing';
 
 export type Action =
   | { type: 'stack/add'; id: string; name: string; now: string }
   | { type: 'stack/rename'; stackId: string; name: string; now: string }
   /** File a pile of cards into a group at once. groupId null takes them out of one. */
   | { type: 'cards/assign'; cardIds: string[]; stackId: string | null; now: string }
+  /** Put a group in the case for today's show, or take it out. Device-local. */
+  | { type: 'pack/toggle'; stackId: string }
   | { type: 'card/add'; id: string; stackId?: string; number: string; name: string; cardNumber?: string; printed?: string[]; photoId?: string; now: string }
   | { type: 'card/price'; cardId: string; priceCents: number; floorCents?: number; now: string }
   /** stackId: a string assigns a group, null removes one, undefined leaves it. */
@@ -47,6 +50,14 @@ export function reducer(db: DB, action: Action): DB {
       const stack: Stack = { id: action.id, name, createdAt: action.now };
       return { ...db, stacks: [...db.stacks, stack] };
     }
+
+    case 'pack/toggle':
+      /*
+       * What is in the case is a fact about THIS trip on THIS device, so there
+       * is no timestamp and nothing to reconcile — the toggle is idempotent and
+       * order-independent, and lib/sync/changes.ts deliberately never pushes it.
+       */
+      return { ...db, packedStackIds: togglePacked(db.packedStackIds, action.stackId) };
 
     case 'stack/rename': {
       const name = action.name.trim();

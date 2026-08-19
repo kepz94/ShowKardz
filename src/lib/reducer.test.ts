@@ -397,3 +397,34 @@ describe('groups — a name, and cards filed under it', () => {
     expect(reducer(db, { type: 'cards/assign', cardIds: [], stackId: 's1', now: NOW })).toBe(db);
   });
 });
+
+describe('pack/toggle — what is in the case', () => {
+  it('puts a group in the case', () => {
+    const db = reducer(EMPTY_DB, { type: 'pack/toggle', stackId: 's1' });
+    expect(db.packedStackIds).toEqual(['s1']);
+  });
+
+  it('takes it back out on a second tap', () => {
+    let db = reducer(EMPTY_DB, { type: 'pack/toggle', stackId: 's1' });
+    db = reducer(db, { type: 'pack/toggle', stackId: 's1' });
+    expect(db.packedStackIds).toEqual([]);
+  });
+
+  it('leaves every other part of the record alone', () => {
+    // Packing is about which groups travel; it must not touch a card, a price
+    // or a deal on its way through the single write path.
+    const before: DB = { ...EMPTY_DB, stacks: [], cards: [], deals: [], receipts: [] };
+    const after = reducer(before, { type: 'pack/toggle', stackId: 's1' });
+    expect(after.cards).toBe(before.cards);
+    expect(after.deals).toBe(before.deals);
+    expect(after.receipts).toBe(before.receipts);
+    expect(after.stacks).toBe(before.stacks);
+  });
+
+  it('packs a group that does not exist yet without complaining', () => {
+    // The reducer does not police this: groupRows only offers real groups, and
+    // packedCards ignores an id that matches nothing.
+    expect(reducer(EMPTY_DB, { type: 'pack/toggle', stackId: 'ghost' }).packedStackIds)
+      .toEqual(['ghost']);
+  });
+});

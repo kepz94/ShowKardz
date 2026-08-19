@@ -63,5 +63,19 @@ export function mergeDb(local: DB, remote: DB): DB {
     cards: mergeById<Card>(local.cards, remote.cards, mergeCard),
     deals: unionById<Deal>(local.deals, remote.deals),
     receipts: mergeById<Receipt>(local.receipts, remote.receipts, lastWriteWins),
+    /*
+     * NOT MERGED — deliberately kept from THIS device.
+     *
+     * What is physically in one dealer's case is a fact about this trip and
+     * this bag, not a record to reconcile: a phone and a laptop can disagree
+     * and neither is wrong. It is never pushed (changedDocs only walks the
+     * collections), so a remote copy is either absent or stale by definition.
+     *
+     * It is carried explicitly rather than left out, because this function
+     * rebuilds the DB field by field and anything it forgets is DROPPED. A
+     * merge that quietly emptied the case would surface on the morning of a
+     * show, with sync reporting perfect health because nothing failed.
+     */
+    packedStackIds: local.packedStackIds ?? [],
   };
 }

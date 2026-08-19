@@ -36,6 +36,9 @@ export function load(): DB {
       // Optional-first: a record written before receipts existed reads as a
       // book with no expenses, and behaves exactly as it did before.
       receipts: parsed.receipts ?? [],
+      // Same optional-first rule: a record written before packing existed reads
+      // as nothing in the case, which is exactly right on a fresh show day.
+      packedStackIds: parsed.packedStackIds ?? [],
     };
   } catch {
     return EMPTY_DB;

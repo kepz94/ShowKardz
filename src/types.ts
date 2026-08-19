@@ -201,6 +201,22 @@ export interface DB {
   cards: Card[];
   deals: Deal[];
   receipts: Receipt[];
+  /**
+   * The groups loaded into the case for the current show. Absent means nothing
+   * is packed, which is how every record written before packing existed reads.
+   *
+   * DEVICE-LOCAL BY DESIGN. What is physically in one dealer's case is a fact
+   * about this trip, not a record to reconcile across devices — so this is left
+   * out of the sync push entirely (see lib/sync/changes.ts). A phone and a
+   * laptop can legitimately disagree about it, and neither is wrong.
+   *
+   * Ids only. Counts and values are derived from the cards on every read, the
+   * same as everywhere else in this app, so a packed group cannot go stale
+   * against the cards it contains.
+   */
+  packedStackIds?: string[];
 }
 
-export const EMPTY_DB: DB = { stacks: [], cards: [], deals: [], receipts: [] };
+export const EMPTY_DB: DB = {
+  stacks: [], cards: [], deals: [], receipts: [], packedStackIds: [],
+};

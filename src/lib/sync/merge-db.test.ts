@@ -136,3 +136,26 @@ describe('groups across two devices', () => {
       .toBe('Saturday table');
   });
 });
+
+describe('what is in the case', () => {
+  it('survives a merge, because a sync must never empty the case', () => {
+    // mergeDb rebuilds the DB object field by field, so a field it forgets is
+    // silently DROPPED — and the damage would land on the morning of a show,
+    // with sync reporting perfect health because nothing failed.
+    const local: DB = { ...EMPTY_DB, packedStackIds: ['s1', 's2'] };
+    expect(mergeDb(local, EMPTY_DB).packedStackIds).toEqual(['s1', 's2']);
+  });
+
+  it('keeps THIS device\u2019s case, not the other one\u2019s', () => {
+    // What is physically in one dealer's bag is not a shared record. The local
+    // answer wins outright; there is nothing to reconcile.
+    const local: DB = { ...EMPTY_DB, packedStackIds: ['s1'] };
+    const remote: DB = { ...EMPTY_DB, packedStackIds: ['s2', 's3'] };
+    expect(mergeDb(local, remote).packedStackIds).toEqual(['s1']);
+  });
+
+  it('reads a record written before packing existed as nothing packed', () => {
+    const legacy: DB = { stacks: [], cards: [], deals: [], receipts: [] };
+    expect(mergeDb(legacy, EMPTY_DB).packedStackIds).toEqual([]);
+  });
+});
