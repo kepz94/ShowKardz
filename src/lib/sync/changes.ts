@@ -20,9 +20,22 @@ export interface DocRef {
 }
 
 /** Collections whose records are written once and never edited. */
-const APPEND_ONLY = ['stacks', 'deals'] as const;
-/** Collections whose records carry updatedAt and can change. */
-const MUTABLE = ['cards', 'receipts'] as const;
+const APPEND_ONLY = ['deals'] as const;
+/**
+ * Collections whose records can change after they are written.
+ *
+ * `stacks` moved here when a group became a renameable name. Left as append-only
+ * it would be pushed once and never again, so a rename would sit on the device
+ * that made it while every other device kept the old name — with sync reporting
+ * perfect health, because nothing failed.
+ */
+const MUTABLE = ['stacks', 'cards', 'receipts'] as const;
+
+/**
+ * When a record was last written. `updatedAt` is optional on a group — one never
+ * renamed has none — so createdAt stands in for it.
+ */
+const stampOf = (r: { createdAt: string; updatedAt?: string }): string => r.updatedAt ?? r.createdAt;
 
 export function changedDocs(prev: DB, next: DB): DocRef[] {
   const out: DocRef[] = [];
@@ -35,9 +48,13 @@ export function changedDocs(prev: DB, next: DB): DocRef[] {
   }
 
   for (const collection of MUTABLE) {
-    const before = new Map(prev[collection].map((r) => [r.id, r.updatedAt]));
+    const before = new Map(prev[collection].map((r) => [r.id, stampOf(r)]));
     for (const record of next[collection]) {
-      if (before.get(record.id) !== record.updatedAt) out.push({ collection, id: record.id });
+      // Presence is checked separately from the stamp: comparing stamps alone
+      // would miss a brand-new record whose stamp is absent on both sides.
+      if (!before.has(record.id) || before.get(record.id) !== stampOf(record)) {
+        out.push({ collection, id: record.id });
+      }
     }
   }
 

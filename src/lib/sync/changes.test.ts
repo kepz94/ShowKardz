@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { changedDocs } from './changes';
-import { EMPTY_DB, type Card, type DB, type Receipt } from '../../types';
+import { EMPTY_DB, type Card, type DB, type Receipt, type Stack } from '../../types';
 
 const T1 = '2026-08-18T10:00:00.000Z';
 const T2 = '2026-08-18T11:00:00.000Z';
@@ -43,15 +43,25 @@ describe('changedDocs', () => {
     expect(changedDocs(before, after)).toEqual([{ collection: 'receipts', id: 'r' }]);
   });
 
-  it('pushes append-only records once, on first appearance', () => {
+  it('pushes a new group and a new deal on first appearance', () => {
+    // Order is not part of the contract: a deal is append-only and a group is
+    // mutable now, so the two come out of different passes.
     const after = db({
-      stacks: [{ id: 's1', year: '2023', product: 'Prizm', parallel: 'Base', createdAt: T1 }],
+      stacks: [{ id: 's1', name: '2023 Prizm', createdAt: T1 }],
       deals: [{ id: 'd1', type: 'cash', lines: [], subtotalCents: 0, agreedCents: 0, createdAt: T1 }],
     });
-    expect(changedDocs(EMPTY_DB, after)).toEqual([
-      { collection: 'stacks', id: 's1' },
-      { collection: 'deals', id: 'd1' },
-    ]);
+    expect(changedDocs(EMPTY_DB, after)).toEqual(
+      expect.arrayContaining([
+        { collection: 'stacks', id: 's1' },
+        { collection: 'deals', id: 'd1' },
+      ]),
+    );
+    expect(changedDocs(EMPTY_DB, after)).toHaveLength(2);
+  });
+
+  it('pushes a deal only once, because a deal is never edited', () => {
+    const deal = { id: 'd1', type: 'cash' as const, lines: [], subtotalCents: 0, agreedCents: 0, createdAt: T1 };
+    expect(changedDocs(db({ deals: [deal] }), db({ deals: [deal] }))).toEqual([]);
   });
 
   it('pushes every changed record, not just the first', () => {
@@ -63,5 +73,29 @@ describe('changedDocs', () => {
     // If a row vanishes locally it was not a user deletion, so there is nothing
     // to send. Sending a delete here would let a merge artifact destroy data.
     expect(changedDocs(db({ cards: [card('a')] }), EMPTY_DB)).toEqual([]);
+  });
+});
+
+describe('a renamed group', () => {
+  const stack = (over: Partial<Stack> = {}): Stack => ({
+    id: 's1', name: 'Prizm', createdAt: '2026-08-19T00:00:00Z', ...over,
+  });
+
+  it('pushes a brand-new group', () => {
+    // A new group carries no updatedAt, so a stamp-only comparison reports it
+    // unchanged and it never leaves the device. Presence is what catches it.
+    const next: DB = { ...EMPTY_DB, stacks: [stack()] };
+    expect(changedDocs(EMPTY_DB, next)).toEqual([{ collection: 'stacks', id: 's1' }]);
+  });
+
+  it('pushes the rename, not just the original', () => {
+    const prev: DB = { ...EMPTY_DB, stacks: [stack()] };
+    const next: DB = { ...EMPTY_DB, stacks: [stack({ name: 'Saturday table', updatedAt: '2026-08-19T09:00:00Z' })] };
+    expect(changedDocs(prev, next)).toEqual([{ collection: 'stacks', id: 's1' }]);
+  });
+
+  it('pushes nothing when a group did not change', () => {
+    const prev: DB = { ...EMPTY_DB, stacks: [stack()] };
+    expect(changedDocs(prev, { ...EMPTY_DB, stacks: [stack()] })).toEqual([]);
   });
 });

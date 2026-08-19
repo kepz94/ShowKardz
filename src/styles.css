@@ -543,3 +543,43 @@ textarea#s-name.from-read{background:var(--money-soft);border-color:var(--money-
                border:1px solid var(--line2);border-radius:999px;
                min-width:13px;height:13px;line-height:11px;text-align:center}
 .rd.off .star{opacity:.4}
+
+/* ---- groups --------------------------------------------------------------
+   A group is a name over a run of cards. Its row answers one question — what
+   is this pile worth right now — so the money sits where a price sits on a
+   card row, and the count under the name says which cards that money covers.
+   A sold card is in neither: its money is realized and shows on the sales
+   side, not here. */
+.grp{display:flex;align-items:center;gap:12px;padding:14px 15px;width:100%;
+     background:none;border:0;text-align:left;cursor:pointer;font:inherit;color:inherit}
+.grp+.grp{border-top:1px solid var(--line)}
+.grp:active{background:var(--raised)}
+.grp .mid{flex:1;min-width:0}
+.grp .t{display:block;font-size:15px;font-weight:600;
+        white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.grp .s{display:block;font-size:12.5px;color:var(--mut);margin-top:4px}
+.grp .amt{flex:none;font-size:16px;font-weight:680;color:var(--money);text-align:right}
+
+/* The two numbers at the top of one group. Same register as the day totals. */
+.tot{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--line);
+     border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--sh-1)}
+.tot.two{grid-template-columns:1fr 1fr}
+.tot>div{background:var(--paper);padding:12px 11px}
+.tot .k{font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
+.tot .v{font-size:19px;font-weight:680;letter-spacing:-.02em;margin-top:3px}
+.tot .v.money{color:var(--money)}
+
+/* Ticking a pile of cards into a group. */
+.chk{display:flex;align-items:center;gap:11px;padding:13px 15px;width:100%;
+     border:0;background:none;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.chk+.chk{border-top:1px solid var(--line)}
+.chk:active{background:var(--raised)}
+.chk .box{width:21px;height:21px;border-radius:6px;border:1.5px solid var(--line2);
+          flex:none;display:flex;align-items:center;justify-content:center;
+          font-size:13px;line-height:1;color:#fff}
+.chk .box.on{background:var(--money);border-color:var(--money)}
+.chk .mid{flex:1;min-width:0}
+.chk .t{display:block;font-size:14.5px;font-weight:550;
+        white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chk .s{display:block;font-size:12.5px;color:var(--mut);margin-top:2px;
+        white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

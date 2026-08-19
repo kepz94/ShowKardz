@@ -14,7 +14,10 @@ import { cardLabel } from './title';
 import { mergeDb } from './sync/merge-db';
 
 export type Action =
-  | { type: 'stack/add'; id: string; year: string; product: string; parallel: string; now: string }
+  | { type: 'stack/add'; id: string; name: string; now: string }
+  | { type: 'stack/rename'; stackId: string; name: string; now: string }
+  /** File a pile of cards into a group at once. groupId null takes them out of one. */
+  | { type: 'cards/assign'; cardIds: string[]; stackId: string | null; now: string }
   | { type: 'card/add'; id: string; stackId?: string; number: string; name: string; cardNumber?: string; printed?: string[]; photoId?: string; now: string }
   | { type: 'card/price'; cardId: string; priceCents: number; floorCents?: number; now: string }
   /** stackId: a string assigns a group, null removes one, undefined leaves it. */
@@ -37,11 +40,39 @@ export function reducer(db: DB, action: Action): DB {
       return mergeDb(db, action.db);
 
     case 'stack/add': {
-      const stack: Stack = {
-        id: action.id, year: action.year, product: action.product,
-        parallel: action.parallel, createdAt: action.now,
-      };
+      // A group is a name. Nothing writes the legacy year/product/parallel any
+      // more — they are read-only history now, see types.ts.
+      const name = action.name.trim();
+      if (name === '') return db;
+      const stack: Stack = { id: action.id, name, createdAt: action.now };
       return { ...db, stacks: [...db.stacks, stack] };
+    }
+
+    case 'stack/rename': {
+      const name = action.name.trim();
+      // An empty rename would leave the group nameless and make it fall back to
+      // its legacy fields, which is a rename nobody asked for. Refuse it.
+      if (name === '') return db;
+      return {
+        ...db,
+        stacks: db.stacks.map((s) =>
+          s.id === action.stackId ? { ...s, name, updatedAt: action.now } : s,
+        ),
+      };
+    }
+
+    case 'cards/assign': {
+      const ids = new Set(action.cardIds);
+      if (ids.size === 0) return db;
+      return {
+        ...db,
+        cards: db.cards.map((c) =>
+          ids.has(c.id)
+            // Same convention as card/edit: null means "no group".
+            ? { ...c, stackId: action.stackId ?? undefined, updatedAt: action.now }
+            : c,
+        ),
+      };
     }
 
     case 'card/add': {

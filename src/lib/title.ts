@@ -11,9 +11,7 @@
  * and every function here has to hold at that stage.
  */
 import type { Card, Stack } from '../types';
-
-/** A parallel token that means "no parallel", and so never appears in a title. */
-const BASE_PARALLEL = 'base';
+import { groupName } from './groups';
 
 /** Cards shout. Title-case them so a composed title reads like a listing. */
 export function prettyBlock(text: string): string {
@@ -50,14 +48,17 @@ export function composeTitle(
    */
   if (printed && printed.length > 0) return name.trim();
 
-  const parallel = stack?.parallel.trim() ?? '';
-  const parts = [
-    stack?.year ?? '',
-    stack?.product ?? '',
-    parallel.toLowerCase() === BASE_PARALLEL ? '' : parallel,
-    name,
-    cardNumber ?? '',
-  ];
+  /*
+   * No read to go on, so the group leads and what was typed follows.
+   *
+   * The group used to contribute three declared fields here — year, product,
+   * parallel. It is a free-text name now, so it contributes that name, which is
+   * what the dealer would have typed into those boxes anyway without being made
+   * to split it in three. A legacy group resolves to the same string it always
+   * composed, because groupName() rebuilds it from the old fields, so no
+   * existing title moves.
+   */
+  const parts = [stack ? groupName(stack) : '', name, cardNumber ?? ''];
   return parts
     .map((p) => p.trim())
     .filter(Boolean)

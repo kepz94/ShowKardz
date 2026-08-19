@@ -8,8 +8,7 @@ const NOW = '2026-08-18T12:00:00.000Z';
 
 const withStack = (): DB =>
   reducer(EMPTY_DB, {
-    type: 'stack/add', id: 's1', year: '2023', product: 'Panini Prizm',
-    parallel: 'Base', now: NOW,
+    type: 'stack/add', id: 's1', name: '2023 Panini Prizm', now: NOW,
   });
 
 const withCards = (): DB => {
@@ -213,7 +212,7 @@ describe('card/add without a group — the day-one path', () => {
 describe('card/edit — filling in what was skipped', () => {
   it('assigns a group to a card entered without one', () => {
     let db = reducer(EMPTY_DB, {
-      type: 'stack/add', id: 's1', year: '2023', product: 'Prizm', parallel: 'Base', now: NOW,
+      type: 'stack/add', id: 's1', name: '2023 Prizm', now: NOW,
     });
     db = reducer(db, { type: 'card/add', id: 'c1', number: '0455', name: '', now: NOW });
     db = reducer(db, { type: 'card/edit', cardId: 'c1', stackId: 's1', now: NOW });
@@ -222,7 +221,7 @@ describe('card/edit — filling in what was skipped', () => {
 
   it('takes a card back OUT of a group', () => {
     let db = reducer(EMPTY_DB, {
-      type: 'stack/add', id: 's1', year: '2023', product: 'Prizm', parallel: 'Base', now: NOW,
+      type: 'stack/add', id: 's1', name: '2023 Prizm', now: NOW,
     });
     db = reducer(db, { type: 'card/add', id: 'c1', stackId: 's1', number: '0455', name: '', now: NOW });
     db = reducer(db, { type: 'card/edit', cardId: 'c1', stackId: null, now: NOW });
@@ -318,5 +317,83 @@ describe('card/delete', () => {
   it('does nothing to a card id that is not there', () => {
     const before = withCard();
     expect(reducer(before, { type: 'card/delete', cardId: 'nope', now: T1 })).toEqual(before);
+  });
+});
+
+describe('groups — a name, and cards filed under it', () => {
+  it('creates a group from a name alone', () => {
+    const db = reducer(EMPTY_DB, { type: 'stack/add', id: 's1', name: 'Dollar box', now: NOW });
+    expect(db.stacks).toEqual([{ id: 's1', name: 'Dollar box', createdAt: NOW }]);
+  });
+
+  it('trims the name', () => {
+    const db = reducer(EMPTY_DB, { type: 'stack/add', id: 's1', name: '  Case 2  ', now: NOW });
+    expect(db.stacks[0]!.name).toBe('Case 2');
+  });
+
+  it('refuses a group with no name at all', () => {
+    const db = reducer(EMPTY_DB, { type: 'stack/add', id: 's1', name: '   ', now: NOW });
+    expect(db.stacks).toEqual([]);
+  });
+
+  it('writes none of the old year/product/parallel fields', () => {
+    // They are read-only history now. Writing one would create a record that
+    // disagrees with itself about which shape it is.
+    const db = reducer(EMPTY_DB, { type: 'stack/add', id: 's1', name: 'Prizm', now: NOW });
+    expect(Object.keys(db.stacks[0]!).sort()).toEqual(['createdAt', 'id', 'name']);
+  });
+
+  it('renames a group', () => {
+    let db = reducer(EMPTY_DB, { type: 'stack/add', id: 's1', name: 'Prizm', now: NOW });
+    db = reducer(db, { type: 'stack/rename', stackId: 's1', name: 'Saturday table', now: '2026-08-19T00:00:00Z' });
+    expect(db.stacks[0]).toMatchObject({ name: 'Saturday table', updatedAt: '2026-08-19T00:00:00Z' });
+  });
+
+  it('refuses to rename a group to nothing', () => {
+    // An empty name would make the group fall back to its legacy fields, or to
+    // "Untitled group" — a rename nobody asked for.
+    let db = reducer(EMPTY_DB, { type: 'stack/add', id: 's1', name: 'Prizm', now: NOW });
+    db = reducer(db, { type: 'stack/rename', stackId: 's1', name: '  ', now: NOW });
+    expect(db.stacks[0]!.name).toBe('Prizm');
+  });
+
+  it('leaves the cards alone when a group is renamed', () => {
+    let db = withCards();
+    db = reducer(db, { type: 'stack/rename', stackId: 's1', name: 'Renamed', now: NOW });
+    expect(liveCards(db).map((c) => c.stackId)).toEqual(['s1', 's1']);
+  });
+
+  it('files a pile of cards into a group in one action', () => {
+    let db = reducer(EMPTY_DB, { type: 'stack/add', id: 's1', name: 'Prizm', now: NOW });
+    db = reducer(db, { type: 'card/add', id: 'c1', number: '0455', name: '', now: NOW });
+    db = reducer(db, { type: 'card/add', id: 'c2', number: '0456', name: '', now: NOW });
+    db = reducer(db, { type: 'card/add', id: 'c3', number: '0457', name: '', now: NOW });
+    db = reducer(db, { type: 'cards/assign', cardIds: ['c1', 'c3'], stackId: 's1', now: NOW });
+    expect(liveCards(db).map((c) => c.stackId)).toEqual(['s1', undefined, 's1']);
+  });
+
+  it('takes a pile of cards back out of every group', () => {
+    let db = withCards();
+    db = reducer(db, { type: 'cards/assign', cardIds: ['c1', 'c2'], stackId: null, now: NOW });
+    expect(liveCards(db).map((c) => c.stackId)).toEqual([undefined, undefined]);
+  });
+
+  it('moves cards from one group straight into another', () => {
+    let db = withCards();
+    db = reducer(db, { type: 'stack/add', id: 's2', name: 'Dollar box', now: NOW });
+    db = reducer(db, { type: 'cards/assign', cardIds: ['c2'], stackId: 's2', now: NOW });
+    expect(liveCards(db).map((c) => c.stackId)).toEqual(['s1', 's2']);
+  });
+
+  it('stamps updatedAt on the cards it moved, so a merge can order the change', () => {
+    let db = withCards();
+    db = reducer(db, { type: 'cards/assign', cardIds: ['c1'], stackId: null, now: '2026-08-19T09:00:00Z' });
+    expect(liveCards(db)[0]!.updatedAt).toBe('2026-08-19T09:00:00Z');
+    expect(liveCards(db)[1]!.updatedAt).toBe(NOW);
+  });
+
+  it('does nothing when nothing was picked', () => {
+    const db = withCards();
+    expect(reducer(db, { type: 'cards/assign', cardIds: [], stackId: 's1', now: NOW })).toBe(db);
   });
 });

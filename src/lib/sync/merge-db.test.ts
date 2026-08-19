@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { mergeDb } from './merge-db';
-import { EMPTY_DB, type Card, type DB, type Deal, type Receipt } from '../../types';
+import { EMPTY_DB, type Card, type DB, type Deal, type Receipt, type Stack } from '../../types';
 
 const T1 = '2026-08-18T10:00:00.000Z';
 const T2 = '2026-08-18T11:00:00.000Z';
@@ -95,5 +95,44 @@ describe('mergeDb — shape', () => {
     const edited = card('a', { priceCents: 1, updatedAt: T2 });
     expect(mergeDb(db({ cards: [edited] }), db({ cards: [sold] })).cards[0])
       .toEqual(mergeDb(db({ cards: [sold] }), db({ cards: [edited] })).cards[0]);
+  });
+});
+
+describe('groups across two devices', () => {
+  const stack = (over: Partial<Stack> = {}): Stack => ({
+    id: 's1', name: 'Prizm', createdAt: '2026-08-19T00:00:00Z', ...over,
+  });
+
+  it('adopts a rename made on the other device', () => {
+    // Groups used to be union-by-id keeping the local copy, which silently threw
+    // an incoming rename away and left the two devices disagreeing forever.
+    const local: DB = { ...EMPTY_DB, stacks: [stack()] };
+    const remote: DB = { ...EMPTY_DB, stacks: [stack({ name: 'Saturday table', updatedAt: '2026-08-19T09:00:00Z' })] };
+    expect(mergeDb(local, remote).stacks[0]!.name).toBe('Saturday table');
+  });
+
+  it('keeps the local rename when it is the newer one', () => {
+    const local: DB = { ...EMPTY_DB, stacks: [stack({ name: 'Mine', updatedAt: '2026-08-19T10:00:00Z' })] };
+    const remote: DB = { ...EMPTY_DB, stacks: [stack({ name: 'Theirs', updatedAt: '2026-08-19T09:00:00Z' })] };
+    expect(mergeDb(local, remote).stacks[0]!.name).toBe('Mine');
+  });
+
+  it('reaches the same answer whichever device merges', () => {
+    const a: DB = { ...EMPTY_DB, stacks: [stack({ name: 'Older' })] };
+    const b: DB = { ...EMPTY_DB, stacks: [stack({ name: 'Newer', updatedAt: '2026-08-19T09:00:00Z' })] };
+    expect(mergeDb(a, b).stacks[0]!.name).toBe(mergeDb(b, a).stacks[0]!.name);
+  });
+
+  it('takes in a group the other device made', () => {
+    const local: DB = { ...EMPTY_DB, stacks: [stack()] };
+    const remote: DB = { ...EMPTY_DB, stacks: [stack({ id: 's2', name: 'Dollar box' })] };
+    expect(mergeDb(local, remote).stacks.map((s) => s.id).sort()).toEqual(['s1', 's2']);
+  });
+
+  it('does not let a legacy group with no updatedAt beat a real rename', () => {
+    const legacy = { id: 's1', year: '2023', product: 'Prizm', parallel: 'Base', createdAt: '2026-08-19T00:00:00Z' };
+    const renamed = stack({ name: 'Saturday table', updatedAt: '2026-08-19T09:00:00Z' });
+    expect(mergeDb({ ...EMPTY_DB, stacks: [legacy] }, { ...EMPTY_DB, stacks: [renamed] }).stacks[0]!.name)
+      .toBe('Saturday table');
   });
 });

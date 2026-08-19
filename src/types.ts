@@ -25,18 +25,36 @@
 export type Timestamp = string;
 
 /**
- * A stack declaration: what the camera cannot read, declared once for a run of
- * cards. Supplies year/product/set and parallel to every card entered under it.
+ * A group: a name the dealer puts on a run of cards, so they can be found and
+ * counted together.
+ *
+ * IT IS JUST A NAME. It was originally three declared fields — year, product,
+ * parallel — on the theory that a group supplies what the camera cannot read.
+ * That theory did not survive contact: it forced a year and a product onto every
+ * group whether or not either meant anything for the pile in hand, and it made
+ * "Dollar box" or "Saturday table" unsayable. The confirmed read now carries the
+ * printed detail off the card itself, so the group's job is narrower: it labels a
+ * run of cards and totals them.
+ *
+ * THE LEGACY FIELDS BELOW ARE READ, NEVER WRITTEN. Groups made before this change
+ * carry them and no `name`, and a device still on the old build can hand one back
+ * through a merge at any time. So nothing migrates them in place — groupName() in
+ * lib/groups.ts derives a name from them on read and is the only thing that looks
+ * at them. Same reasoning as the tombstones: the reader copes, not the store.
  */
 export interface Stack {
   id: string;
-  /** e.g. "2023" */
-  year: string;
-  /** e.g. "Panini Prizm" */
-  product: string;
-  /** e.g. "Base", "Silver". Omitted from composed titles when it is "Base". */
-  parallel: string;
+  /** What the dealer calls it. Absent only on groups made before this change. */
+  name?: string;
+  /** @deprecated Legacy shape. Read through groupName(); never write. */
+  year?: string;
+  /** @deprecated Legacy shape. Read through groupName(); never write. */
+  product?: string;
+  /** @deprecated Legacy shape. Read through groupName(); never write. */
+  parallel?: string;
   createdAt: Timestamp;
+  /** Set when renamed, so a merge can tell which name is newer. */
+  updatedAt?: Timestamp;
 }
 
 /** Where a card is in its life. Drives every screen's filtering. */

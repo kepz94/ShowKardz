@@ -4,7 +4,7 @@ import { useStore, newId, nowIso } from '../lib/store';
 import { composeTitle } from '../lib/title';
 import { compsUrl } from '../lib/comps';
 import { dollarsToCents, formatCents } from '../lib/money';
-import { groupName } from '../lib/groups';
+import { cardsInGroup, groupName, groupRows, NO_GROUP, statsFor, totalInCase } from '../lib/groups';
 import { downscale } from '../lib/images';
 import { putPhoto } from '../lib/photos';
 import { PhotoThumb } from '../components/PhotoThumb';
@@ -24,24 +24,43 @@ export function Book({ go }: { go: (r: Route) => void }) {
   const { db } = useStore();
   const [editing, setEditing] = useState<string | null>(null);
   const [declaring, setDeclaring] = useState(false);
+  const [renaming, setRenaming] = useState<Stack | null>(null);
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
 
   if (declaring) return <NewGroup onDone={() => setDeclaring(false)} />;
+  if (renaming) return <NewGroup existing={renaming} onDone={() => setRenaming(null)} />;
 
   if (editing) {
     const live = liveCards(db).find((c) => c.id === editing);
     if (live) return <CardDetail card={live} onDone={() => setEditing(null)} />;
   }
-  return <Collection go={go} onEdit={setEditing} onNewGroup={() => setDeclaring(true)} />;
+
+  if (openGroup != null) {
+    return (
+      <GroupDetail groupId={openGroup} onBack={() => setOpenGroup(null)}
+                   onEdit={setEditing} onRename={setRenaming} />
+    );
+  }
+
+  return (
+    <Collection go={go} onEdit={setEditing} onNewGroup={() => setDeclaring(true)}
+                onOpenGroup={setOpenGroup} />
+  );
 }
 
 /* -------------------------------------------------------------------------- */
 
 function Collection({
-  go, onEdit, onNewGroup,
-}: { go: (r: Route) => void; onEdit: (id: string) => void; onNewGroup: () => void }) {
+  go, onEdit, onNewGroup, onOpenGroup,
+}: {
+  go: (r: Route) => void;
+  onEdit: (id: string) => void;
+  onNewGroup: () => void;
+  onOpenGroup: (id: string) => void;
+}) {
   const { db } = useStore();
+  const [tab, setTab] = useState<'cards' | 'groups'>('cards');
   const [filter, setFilter] = useState<Filter>('all');
-  const [groupFilter, setGroupFilter] = useState<string>('all');
   const [query, setQuery] = useState('');
 
   // Deleted cards stay in db.cards as tombstones so the sync merge can see
@@ -55,23 +74,14 @@ function Collection({
     sold: cards.filter((c) => c.status === 'sold').length,
   }), [cards]);
 
-  const perGroup = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const c of cards) map.set(c.stackId ?? '', (map.get(c.stackId ?? '') ?? 0) + 1);
-    return map;
-  }, [cards]);
-
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
     return cards
       .filter((c) => (filter === 'all' ? true : c.status === filter))
-      .filter((c) => groupFilter === 'all' ? true
-        : groupFilter === 'none' ? c.stackId == null
-        : c.stackId === groupFilter)
       .filter((c) => q === '' || c.name.toLowerCase().includes(q) || c.number.includes(q))
       .slice()
       .reverse();
-  }, [cards, filter, groupFilter, query]);
+  }, [cards, filter, query]);
 
   return (
     <>
@@ -80,9 +90,14 @@ function Collection({
           <div className="eb">Book</div>
           <h1>Your collection</h1>
         </div>
+        {/* On the groups tab the question is what the case is WORTH, since that
+            is what every row below adds up to. On the cards tab it stays a
+            count, which is what it has always been. */}
         <div className="aside">
           <div className="k">In the case</div>
-          <div className="v">{counts.available}</div>
+          <div className="v">
+            {tab === 'groups' ? formatCents(totalInCase(db)) : counts.available}
+          </div>
         </div>
       </header>
 
@@ -99,9 +114,16 @@ function Collection({
             </button>
           </div>
         </div>
+      ) : tab === 'groups' ? (
+        <>
+          <BookTabs tab={tab} setTab={setTab} />
+          <GroupList onOpen={onOpenGroup} onNewGroup={onNewGroup} />
+        </>
       ) : (
         <>
-          <div className="seg" role="group" aria-label="Filter by state">
+          <BookTabs tab={tab} setTab={setTab} />
+
+          <div className="seg" role="group" aria-label="Filter by state" style={{ marginTop: 11 }}>
             {(['all', 'unpriced', 'available', 'sold'] as Filter[]).map((f) => (
               <button key={f} aria-pressed={filter === f} onClick={() => setFilter(f)}>
                 {f === 'all' ? 'All' : f === 'unpriced' ? 'Unpriced' : f === 'available' ? 'In case' : 'Sold'}
@@ -110,23 +132,10 @@ function Collection({
             ))}
           </div>
 
-          <div className="field">
-            <label htmlFor="grp-filter">Group</label>
-            <select id="grp-filter" value={groupFilter}
-                    onChange={(e) => setGroupFilter(e.target.value)}>
-              <option value="all">Every group ({counts.all})</option>
-              <option value="none">No group ({perGroup.get('') ?? 0})</option>
-              {db.stacks.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {groupName(s)} ({perGroup.get(s.id) ?? 0})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <button className="btn ghost sm" style={{ marginTop: 11 }} onClick={onNewGroup}>
-            {db.stacks.length === 0 ? 'Create a group' : 'New group'}
-          </button>
+          {/* The group filter used to be a dropdown here. It is a tab now — a
+              group is something you open and read totals off, not a way to
+              narrow this list, and two filters stacked on one screen was one
+              too many. */}
 
           {counts.all > 6 && (
             <div className="field" style={{ marginTop: 11 }}>
@@ -146,37 +155,7 @@ function Collection({
                 <div className="t">Nothing here</div>
                 <div className="s">No card matches this filter.</div>
               </div>
-            ) : shown.map((c) => {
-              const stack = db.stacks.find((s) => s.id === c.stackId);
-              return (
-                <button className="row" key={c.id} onClick={() => onEdit(c.id)}>
-                  {c.photoId
-                    ? <PhotoThumb photoId={c.photoId} alt={`Card ${c.number}`} />
-                    : <span className="num">{c.number}</span>}
-                  <span className="mid">
-                    <span className={`t${c.name.trim() === '' && !stack ? ' muted' : ''}`}>
-                      {c.name.trim() !== '' ? c.name : stack ? groupName(stack) : 'Unnamed'}
-                    </span>
-                    <span className="s">
-                      {c.status === 'unpriced' && <span className="pill unpriced">Unpriced</span>}
-                      {c.status === 'sold' && <span className="pill sold">Sold</span>}
-                      <span className="ctx">
-                        {c.photoId ? `${c.number} · ` : ''}
-                        {stack ? groupName(stack) : c.name.trim() === '' ? 'Tap to fill in' : ''}
-                      </span>
-                    </span>
-                  </span>
-                  <span className="amt">
-                    {c.status === 'sold' ? (
-                      <>
-                        {formatCents(c.realizedCents ?? 0)}
-                        <span className="was">{formatCents(c.priceCents ?? 0)}</span>
-                      </>
-                    ) : c.priceCents != null ? formatCents(c.priceCents) : '—'}
-                  </span>
-                </button>
-              );
-            })}
+            ) : shown.map((c) => <CardRow key={c.id} card={c} onEdit={onEdit} />)}
           </div>
         </>
       )}
@@ -186,55 +165,364 @@ function Collection({
 
 /* -------------------------------------------------------------------------- */
 
-function NewGroup({ onDone }: { onDone: () => void }) {
+/** Cards or groups. Two ways to read the same collection. */
+function BookTabs({ tab, setTab }: { tab: 'cards' | 'groups'; setTab: (t: 'cards' | 'groups') => void }) {
+  return (
+    <div className="seg" role="group" aria-label="Cards or groups">
+      <button aria-pressed={tab === 'cards'} onClick={() => setTab('cards')}>Cards</button>
+      <button aria-pressed={tab === 'groups'} onClick={() => setTab('groups')}>Groups</button>
+    </div>
+  );
+}
+
+/**
+ * One card, as a row. Shared by the collection and by a group's card list so the
+ * two cannot drift — the same card has to read identically wherever it appears.
+ */
+function CardRow({ card: c, onEdit }: { card: Card; onEdit: (id: string) => void }) {
+  const { db } = useStore();
+  const stack = db.stacks.find((s) => s.id === c.stackId);
+  return (
+    <button className="row" onClick={() => onEdit(c.id)}>
+      {c.photoId
+        ? <PhotoThumb photoId={c.photoId} alt={`Card ${c.number}`} />
+        : <span className="num">{c.number}</span>}
+      <span className="mid">
+        <span className={`t${c.name.trim() === '' && !stack ? ' muted' : ''}`}>
+          {c.name.trim() !== '' ? c.name : stack ? groupName(stack) : 'Unnamed'}
+        </span>
+        <span className="s">
+          {c.status === 'unpriced' && <span className="pill unpriced">Unpriced</span>}
+          {c.status === 'sold' && <span className="pill sold">Sold</span>}
+          <span className="ctx">
+            {c.photoId ? `${c.number} · ` : ''}
+            {stack ? groupName(stack) : c.name.trim() === '' ? 'Tap to fill in' : ''}
+          </span>
+        </span>
+      </span>
+      <span className="amt">
+        {c.status === 'sold' ? (
+          <>
+            {formatCents(c.realizedCents ?? 0)}
+            <span className="was">{formatCents(c.priceCents ?? 0)}</span>
+          </>
+        ) : c.priceCents != null ? formatCents(c.priceCents) : '—'}
+      </span>
+    </button>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Every group with what it holds.
+ *
+ * The money on a row is what that group is still worth IN THE CASE — a sold card
+ * drops out of both the count and the total, because its money is realized and
+ * belongs on the sales screen. See lib/groups.ts.
+ */
+function GroupList({ onOpen, onNewGroup }: { onOpen: (id: string) => void; onNewGroup: () => void }) {
+  const { db } = useStore();
+  const rows = useMemo(() => groupRows(db), [db]);
+
+  return (
+    <>
+      <h2>
+        <span>Groups</span>
+        <span className="count">{rows.length}</span>
+      </h2>
+
+      <div className="list">
+        {rows.length === 0 ? (
+          <div className="empty">
+            <div className="t">No groups yet</div>
+            <div className="s">
+              A group is a name over a run of cards — “2023 Prizm”, “Dollar box” — so you can
+              total them together.
+            </div>
+          </div>
+        ) : rows.map((r) => (
+          <button className="grp" key={r.id === '' ? '__none' : r.id} onClick={() => onOpen(r.id)}>
+            <span className="mid">
+              <span className={`t${r.ungrouped ? ' muted' : ''}`}>{r.name}</span>
+              <span className="s">
+                {r.cardCount} {r.cardCount === 1 ? 'card' : 'cards'}
+                {r.unpricedCount > 0 && ` · ${r.unpricedCount} unpriced`}
+              </span>
+            </span>
+            <span className="amt">{formatCents(r.valueCents)}</span>
+          </button>
+        ))}
+      </div>
+
+      <button className="btn ghost sm" style={{ marginTop: 12 }} onClick={onNewGroup}>
+        New group
+      </button>
+    </>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+
+/**
+ * One group: what it is worth, then what is in it.
+ *
+ * The ungrouped bucket lands here too. It cannot be renamed and cards cannot be
+ * added TO it — "no group" is the absence of a group, not a place — so those two
+ * controls are simply absent rather than present and dead.
+ */
+function GroupDetail({
+  groupId, onBack, onEdit, onRename,
+}: {
+  groupId: string;
+  onBack: () => void;
+  onEdit: (id: string) => void;
+  onRename: (s: Stack) => void;
+}) {
+  const { db } = useStore();
+  const [filter, setFilter] = useState<Filter>('all');
+  const [assigning, setAssigning] = useState(false);
+
+  const stack = db.stacks.find((s) => s.id === groupId);
+  const ungrouped = groupId === NO_GROUP;
+
+  // A group deleted on another device can land mid-view. Fall back rather than
+  // render a screen with no subject.
+  if (!ungrouped && !stack) return <><p className="lede">That group is gone.</p>
+    <button className="btn ghost sm" onClick={onBack}>Back to groups</button></>;
+
+  const cards = cardsInGroup(db, groupId);
+  const stats = statsFor(cards);
+  const counts = {
+    all: cards.length,
+    unpriced: cards.filter((c) => c.status === 'unpriced').length,
+    available: cards.filter((c) => c.status === 'available').length,
+    sold: cards.filter((c) => c.status === 'sold').length,
+  };
+  const shown = cards
+    .filter((c) => (filter === 'all' ? true : c.status === filter))
+    .slice()
+    .reverse();
+
+  if (assigning && stack) {
+    return <AssignCards stack={stack} onDone={() => setAssigning(false)} />;
+  }
+
+  return (
+    <>
+      <header className="screen-head">
+        <div>
+          <div className="eb">Book · group</div>
+          <h1>{ungrouped ? 'No group' : groupName(stack!)}</h1>
+        </div>
+      </header>
+
+      <div className="tot two">
+        <div>
+          <div className="k">In case</div>
+          <div className="v money">{formatCents(stats.valueCents)}</div>
+        </div>
+        <div>
+          <div className="k">Cards</div>
+          <div className="v">{stats.cardCount}</div>
+        </div>
+      </div>
+
+      {stats.unpricedCount > 0 && (
+        <p className="claim" style={{ marginTop: 9 }}>
+          {stats.unpricedCount} still unpriced, so the total is short.
+        </p>
+      )}
+
+      <div className="seg" role="group" aria-label="Filter by state" style={{ marginTop: 12 }}>
+        {(['all', 'unpriced', 'available', 'sold'] as Filter[]).map((f) => (
+          <button key={f} aria-pressed={filter === f} onClick={() => setFilter(f)}>
+            {f === 'all' ? 'All' : f === 'unpriced' ? 'Unpriced' : f === 'available' ? 'In case' : 'Sold'}
+            {' '}{counts[f]}
+          </button>
+        ))}
+      </div>
+
+      <h2>
+        <span>Cards</span>
+        <span className="count">{shown.length}</span>
+      </h2>
+
+      <div className="list">
+        {shown.length === 0 ? (
+          <div className="empty">
+            <div className="t">Nothing here</div>
+            <div className="s">No card in this group matches the filter.</div>
+          </div>
+        ) : shown.map((c) => <CardRow key={c.id} card={c} onEdit={onEdit} />)}
+      </div>
+
+      {!ungrouped && (
+        <>
+          <button className="btn ghost sm" style={{ marginTop: 12 }} onClick={() => setAssigning(true)}>
+            Add cards to this group
+          </button>
+          <button className="btn ghost sm" style={{ marginTop: 9 }} onClick={() => onRename(stack!)}>
+            Rename group
+          </button>
+        </>
+      )}
+      <button className="btn ghost sm" style={{ marginTop: 9 }} onClick={onBack}>
+        Back to groups
+      </button>
+    </>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+
+/**
+ * File a pile of cards into a group in one pass.
+ *
+ * A card's group can already be changed one at a time by opening it, which is
+ * right when you are looking at that card. This is for the other case: a stack
+ * that was scanned first and filed after, where doing it card by card means
+ * leaving and re-entering the same screen thirty times.
+ *
+ * Cards already in this group are not listed. They are the answer to a question
+ * nobody is asking here, and every row shown is a row that has to be read.
+ */
+function AssignCards({ stack, onDone }: { stack: Stack; onDone: () => void }) {
+  const { db, dispatch } = useStore();
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+
+  const candidates = useMemo(
+    () => liveCards(db).filter((c) => c.stackId !== stack.id).slice().reverse(),
+    [db, stack.id],
+  );
+
+  function toggle(id: string) {
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  return (
+    <>
+      <header className="screen-head">
+        <div>
+          <div className="eb">Book · group</div>
+          <h1>Add to {groupName(stack)}</h1>
+        </div>
+        <div className="aside">
+          <div className="k">Picked</div>
+          <div className="v">{picked.size}</div>
+        </div>
+      </header>
+
+      {candidates.length === 0 ? (
+        <>
+          <div className="list">
+            <div className="empty">
+              <div className="t">Every card is already in this group</div>
+              <div className="s">There is nothing left to add.</div>
+            </div>
+          </div>
+          <button className="btn ghost sm" style={{ marginTop: 12 }} onClick={onDone}>Back</button>
+        </>
+      ) : (
+        <>
+          <p className="lede">Every card not already in this group. Tick what belongs.</p>
+
+          <div className="list">
+            {candidates.map((c) => {
+              const from = db.stacks.find((s) => s.id === c.stackId);
+              const on = picked.has(c.id);
+              return (
+                <button className="chk" key={c.id} onClick={() => toggle(c.id)}
+                        aria-pressed={on}>
+                  <span className={`box${on ? ' on' : ''}`} aria-hidden="true">{on ? '✓' : ''}</span>
+                  <span className="mid">
+                    <span className="t">
+                      {c.name.trim() !== '' ? c.name : `Card ${c.number}`}
+                    </span>
+                    <span className="s">
+                      {c.number} · {from ? groupName(from) : 'No group'}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="sticky">
+            <button className="btn money" disabled={picked.size === 0}
+                    onClick={() => {
+                      dispatch({
+                        type: 'cards/assign', cardIds: [...picked],
+                        stackId: stack.id, now: nowIso(),
+                      });
+                      onDone();
+                    }}>
+              {picked.size === 0
+                ? 'Pick some cards'
+                : `File ${picked.size} ${picked.size === 1 ? 'card' : 'cards'} into ${groupName(stack)}`}
+            </button>
+            <button className="btn ghost sm" style={{ marginTop: 9 }} onClick={onDone}>Cancel</button>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Making a group. One field, because a group is one thing: a name.
+ *
+ * It used to ask for year, product and parallel as three separate boxes, on the
+ * theory that a group supplies what the camera cannot read. That forced a year
+ * and a product onto every group whether or not either applied, and made
+ * "Dollar box" impossible to say. See the note on Stack in types.ts.
+ */
+function NewGroup({ onDone, existing }: { onDone: () => void; existing?: Stack }) {
   const { dispatch } = useStore();
-  const [year, setYear] = useState('');
-  const [product, setProduct] = useState('');
-  const [parallel, setParallel] = useState('Base');
+  const [name, setName] = useState(existing ? groupName(existing) : '');
+  const renaming = existing != null;
+
+  function submit() {
+    if (name.trim() === '') return;
+    if (renaming) dispatch({ type: 'stack/rename', stackId: existing.id, name: name.trim(), now: nowIso() });
+    else dispatch({ type: 'stack/add', id: newId(), name: name.trim(), now: nowIso() });
+    onDone();
+  }
 
   return (
     <>
       <header className="screen-head">
         <div>
           <div className="eb">Book</div>
-          <h1>New group</h1>
+          <h1>{renaming ? 'Rename group' : 'New group'}</h1>
         </div>
       </header>
 
       <p className="lede">
-        A group supplies what a camera cannot read — year, product, parallel — to every card in
-        it, so titles compose themselves. Optional: cards work perfectly well without one.
+        A group is a name you put on a run of cards, so you can find them and total them together.
       </p>
 
       <div className="card">
         <div className="field">
-          <label htmlFor="year">Year</label>
-          <input id="year" type="text" inputMode="numeric" value={year}
-                 onChange={(e) => setYear(e.target.value)} placeholder="2023" />
-        </div>
-        <div className="field">
-          <label htmlFor="product">Product / set</label>
-          <input id="product" type="text" value={product}
-                 onChange={(e) => setProduct(e.target.value)} placeholder="Panini Prizm" />
-        </div>
-        <div className="field">
-          <label htmlFor="parallel">Parallel</label>
-          <input id="parallel" type="text" value={parallel}
-                 onChange={(e) => setParallel(e.target.value)} placeholder="Base" />
-          <p className="claim">Leave it as Base and it stays out of the card titles.</p>
+          <label htmlFor="g-name">Group name</label>
+          <input id="g-name" type="text" value={name} autoFocus
+                 onChange={(e) => setName(e.target.value)}
+                 onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
+                 placeholder="Saturday table" />
+          <p className="claim">Anything you would actually say — 2023 Prizm, Dollar box, Case 2.</p>
         </div>
       </div>
 
       <div className="sticky">
-        <button className="btn" disabled={product.trim() === '' && year.trim() === ''}
-                onClick={() => {
-                  dispatch({
-                    type: 'stack/add', id: newId(), year: year.trim(), product: product.trim(),
-                    parallel: parallel.trim() || 'Base', now: nowIso(),
-                  });
-                  onDone();
-                }}>
-          Create group
+        <button className="btn" disabled={name.trim() === ''} onClick={submit}>
+          {renaming ? 'Save name' : 'Create group'}
         </button>
         <button className="btn ghost sm" style={{ marginTop: 9 }} onClick={onDone}>Cancel</button>
       </div>
@@ -261,7 +549,7 @@ function CardDetail({ card, onDone }: { card: Card; onDone: () => void }) {
    * screen unmounts it and takes every unsaved field with it — the same class
    * of loss the constraints doc warns about for the price pass.
    */
-  const [newGroup, setNewGroup] = useState<{ year: string; product: string } | null>(null);
+  const [newGroup, setNewGroup] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const stack: Stack | undefined = db.stacks.find((s) => s.id === groupId);
@@ -389,32 +677,18 @@ function CardDetail({ card, onDone }: { card: Card; onDone: () => void }) {
             </select>
           )}
 
-          {newGroup ? (
+          {newGroup != null ? (
             <div className="subform">
-              <div className="grid2">
-                <div>
-                  <label htmlFor="ng-year">Year</label>
-                  <input id="ng-year" type="text" inputMode="numeric" value={newGroup.year}
-                         onChange={(e) => setNewGroup({ ...newGroup, year: e.target.value })}
-                         placeholder="2023" />
-                </div>
-                <div>
-                  <label htmlFor="ng-product">Product</label>
-                  <input id="ng-product" type="text" value={newGroup.product}
-                         onChange={(e) => setNewGroup({ ...newGroup, product: e.target.value })}
-                         placeholder="Panini Prizm" />
-                </div>
-              </div>
+              <label htmlFor="ng-name">Group name</label>
+              <input id="ng-name" type="text" value={newGroup} autoFocus
+                     onChange={(e) => setNewGroup(e.target.value)}
+                     placeholder="Saturday table" />
               <div className="grid2" style={{ marginTop: 11 }}>
                 <button className="btn ghost sm" onClick={() => setNewGroup(null)}>Cancel</button>
-                <button className="btn sm"
-                        disabled={newGroup.year.trim() === '' && newGroup.product.trim() === ''}
+                <button className="btn sm" disabled={newGroup.trim() === ''}
                         onClick={() => {
                           const id = newId();
-                          dispatch({
-                            type: 'stack/add', id, year: newGroup.year.trim(),
-                            product: newGroup.product.trim(), parallel: 'Base', now: nowIso(),
-                          });
+                          dispatch({ type: 'stack/add', id, name: newGroup.trim(), now: nowIso() });
                           setGroupId(id);
                           setNewGroup(null);
                         }}>
@@ -424,7 +698,7 @@ function CardDetail({ card, onDone }: { card: Card; onDone: () => void }) {
             </div>
           ) : (
             <button className="btn ghost sm" style={{ marginTop: db.stacks.length > 0 ? 9 : 0 }}
-                    onClick={() => setNewGroup({ year: '', product: '' })}>
+                    onClick={() => setNewGroup('')}>
               {db.stacks.length === 0 ? 'Create a group' : 'New group'}
             </button>
           )}

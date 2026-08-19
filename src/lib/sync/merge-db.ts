@@ -4,7 +4,10 @@
  * Each collection has its own rule, decided here rather than discovered in
  * production:
  *
- *   stacks   — append-only declarations. Union by id.
+ *   stacks   — last-write-wins on updatedAt. They WERE append-only, from when a
+ *              group was three fields declared once and never touched again. A
+ *              group is a name now, and a name can be corrected, so a rename is
+ *              an edit and has to travel like one.
  *   cards    — SOLD WINS, then last-write-wins (lib/merge.ts). The physical card
  *              is the real lock: one card, one hand.
  *   deals    — immutable once rung up. Union by id; a deal is never edited, so
@@ -41,9 +44,22 @@ function mergeById<T extends { id: string }>(a: T[], b: T[], pick: (x: T, y: T) 
 const lastWriteWins = <T extends { updatedAt: string }>(a: T, b: T): T =>
   a.updatedAt >= b.updatedAt ? a : b;
 
+/**
+ * When a record was last written, for a record whose updatedAt is optional.
+ *
+ * A group only gets an updatedAt when it is renamed, and one made before groups
+ * were renameable has none at all. Falling back to createdAt makes "never
+ * edited" comparable with "edited", so a rename beats an original and two
+ * originals tie — which is the correct answer, since they are the same record.
+ */
+const stampOf = (r: { createdAt: string; updatedAt?: string }): string => r.updatedAt ?? r.createdAt;
+
+/** Later write wins; a tie keeps the local copy so the merge cannot oscillate. */
+const pickStack = (a: Stack, b: Stack): Stack => (stampOf(a) >= stampOf(b) ? a : b);
+
 export function mergeDb(local: DB, remote: DB): DB {
   return {
-    stacks: unionById<Stack>(local.stacks, remote.stacks),
+    stacks: mergeById<Stack>(local.stacks, remote.stacks, pickStack),
     cards: mergeById<Card>(local.cards, remote.cards, mergeCard),
     deals: unionById<Deal>(local.deals, remote.deals),
     receipts: mergeById<Receipt>(local.receipts, remote.receipts, lastWriteWins),
