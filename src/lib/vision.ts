@@ -35,8 +35,15 @@ const NOISE = [
   /\bnba\b/i, /\bnfl\b/i, /\bmlb\b/i, /\bnhl\b/i, /\brookie\b/i, /\bcard\b/i,
 ];
 
-/** A whole line that is nothing but a card number: "#58", "12/99". */
-const CARD_NUMBER = /^#?(\d{1,4}(?:\s*\/\s*\d{1,4})?)$/;
+/**
+ * A whole line that is nothing but a card number: "#58", "# 58", "12/99".
+ *
+ * The `\s*` after the hash is not cosmetic. Vision returns "#" and "58" as two
+ * SEPARATE words, so a line rebuilt from them reads "TIMBERWOLVES # 58" — and a
+ * pattern that demands the digits touch the hash silently drops the strongest
+ * card-number signal a card has. Confirmed against a real response.
+ */
+const CARD_NUMBER = /^#?\s*(\d{1,4}(?:\s*\/\s*\d{1,4})?)$/;
 
 /**
  * A card number sitting inside a longer line. Cards print the team and the
@@ -46,7 +53,7 @@ const CARD_NUMBER = /^#?(\d{1,4}(?:\s*\/\s*\d{1,4})?)$/;
  * more likely to be a year ("2023 PANINI PRIZM") than a card number, and a
  * wrong number is worse than none.
  */
-const EMBEDDED_NUMBER = /(?:#(\d{1,4})|\b(\d{1,4}\s*\/\s*\d{1,4})\b)/;
+const EMBEDDED_NUMBER = /(?:#\s*(\d{1,4})|\b(\d{1,4}\s*\/\s*\d{1,4})\b)/;
 
 interface Box { x0: number; x1: number; y0: number; y1: number }
 
@@ -158,7 +165,18 @@ const clean = (text: string): string => text.replace(/[^\p{L}\p{N}\s'./#-]/gu, '
  */
 export function pickCardText(annotations: VisionAnnotation[]): CardRead {
   const lines = groupIntoLines(annotations)
-    .map((a) => ({ text: clean(a.description ?? ''), size: area(a) }))
+    .map((a) => {
+      const b = box(a);
+      return {
+        text: clean(a.description ?? ''),
+        size: area(a),
+        // Glyph HEIGHT, not area: area rewards a long line, and the widest
+        // thing on a card is often a row of small print, not the name.
+        height: b ? b.y1 - b.y0 : 0,
+        top: b ? b.y0 : 0,
+        bottom: b ? b.y1 : 0,
+      };
+    })
     .filter((l) => l.text !== '');
 
   // A "#" or an "n/n" serial is unambiguous — that is a card number and
@@ -186,17 +204,69 @@ export function pickCardText(annotations: VisionAnnotation[]): CardRead {
     .map((token) => /^#?(\d{1,4})$/.exec(token)?.[1] ?? '')
     .find((n) => n !== '' && !isYear(n)) ?? '';
 
-  const nameCandidates = lines
+  /*
+   * THE NAME IS A BLOCK, NOT A LINE.
+   *
+   * Requiring two alphabetic words in ONE line looks reasonable and is wrong on
+   * a large share of real cards, because the first and last name are very often
+   * printed stacked:
+   *
+   *     ANTHONY
+   *     EDWARDS
+   *
+   * Neither line has two words, so no candidate survived and the read came back
+   * nameless — which is what "could not read the card" actually was, even after
+   * lines were being rebuilt from words correctly.
+   *
+   * So: find the biggest TYPE SIZE among plausible lines, take every line set in
+   * that same size, and merge the ones that sit directly above or below each
+   * other. That reads a stacked name and a single-line name identically, and it
+   * still cannot pick up the team or the set, which are printed smaller.
+   */
+  const plausible = lines
     .filter((l) => !NOISE.some((re) => re.test(l.text)))
     .filter((l) => !CARD_NUMBER.test(l.text))
-    // A player has at least two ALPHABETIC words. Counting tokens alone lets
-    // "TIMBERWOLVES 58" pass as a name; counting words made of letters does
-    // not, and also rejects "PRIZM 58" and similar.
-    .filter((l) => l.text.split(/\s+/).filter((w) => /^[\p{L}'’-]{2,}$/u.test(w)).length >= 2)
-    .sort((a, b) => b.size - a.size);
+    // At least one real word. Rejects "58", "12/99" and other digit debris.
+    .filter((l) => l.text.split(/\s+/).some((w) => /^[\p{L}'’-]{2,}$/u.test(w)));
 
-  const best = nameCandidates[0];
-  const name = best ? titleCase(best.text).replace(/\s+/g, ' ').trim() : '';
+  const tallest = plausible.reduce<typeof plausible[number] | undefined>(
+    (best, l) => (best === undefined || l.height > best.height ? l : best),
+    undefined,
+  );
+
+  let name = '';
+  if (tallest) {
+    // Same type size as the tallest line, within a tolerance that absorbs the
+    // difference between a cap-height line and one with a descender.
+    const sameSize = plausible
+      .filter((l) => l.height >= tallest.height * 0.72)
+      .sort((a, b) => a.top - b.top);
+
+    // Keep only the run that actually touches the tallest line: two large words
+    // at opposite ends of the card are not one name.
+    const gapLimit = tallest.height * 1.1;
+    const block = [tallest];
+    const start = sameSize.indexOf(tallest);
+    for (let i = start - 1; i >= 0; i -= 1) {
+      const above = sameSize[i];
+      const next = sameSize[i + 1];
+      if (!above || !next || next.top - above.bottom > gapLimit) break;
+      block.unshift(above);
+    }
+    for (let i = start + 1; i < sameSize.length; i += 1) {
+      const below = sameSize[i];
+      const prev = sameSize[i - 1];
+      if (!below || !prev || below.top - prev.bottom > gapLimit) break;
+      block.push(below);
+    }
+
+    const joined = block.map((l) => l.text).join(' ').replace(/\s+/g, ' ').trim();
+    // A player has two names. Checked on the whole block rather than per line,
+    // which is the correction: "TIMBERWOLVES" alone still fails, "ANTHONY" +
+    // "EDWARDS" stacked now passes.
+    const words = joined.split(' ').filter((w) => /^[\p{L}'’-]{2,}$/u.test(w));
+    if (words.length >= 2) name = titleCase(joined);
+  }
   const cardNumber = strong || (name !== '' ? weak : '');
 
   return { name, cardNumber: cardNumber.replace(/\s*\/\s*/, '/') };
