@@ -114,6 +114,36 @@ Both invariants are enforced and covered by tests from day one:
   records, never from counters. The physical card is the real lock — one card, one
   hand — so genuine conflicts are rare by nature.
 
+## Card reading setup
+
+Google Vision reads the player name off a card photo. It is the only reader — an
+on-device engine was tried and removed (see Known gaps). Everything below is a
+one-time setup in the Google Cloud console for the `showkardz` project, which is
+the same project as Firebase: a Firebase project *is* a Google Cloud project.
+
+1. **Billing.** Vision does not run on Firebase's free Spark plan. Firebase
+   console → Usage and billing → Modify plan → Blaze. Free allowance is 1,000
+   images/month; realistic use for one dealer sits well inside it.
+2. **Enable the API** — `console.cloud.google.com/apis/library/vision.googleapis.com?project=showkardz`
+3. **Create an API key** — `console.cloud.google.com/apis/credentials?project=showkardz`
+4. **Restrict it, both ways.** Application restrictions → Websites →
+   `https://kepz94.github.io/*` (the `*` matters — the app is served from a
+   subpath). API restrictions → Restrict key → Cloud Vision API only.
+5. **Cap the quota** —
+   `console.cloud.google.com/apis/api/vision.googleapis.com/quotas?project=showkardz`.
+   A quota cap REFUSES requests; a budget alert only emails after money is spent.
+   The cap is the protection, the alert is the notification. Set both.
+6. **Store the key** as the repository secret `VISION_API_KEY`
+   (repo → Settings → Secrets and variables → Actions). The build injects it.
+
+The key cannot be kept secret — a browser call exposes whatever it sends, so the
+published bundle contains it. The referrer restriction and the quota cap are what
+actually bound the exposure, which is why steps 4 and 5 are not optional. Keeping
+it in a repository secret keeps it out of git history, nothing more.
+
+Errors name their own cause: "requests from referer are blocked" is step 4,
+"quota exceeded" is step 5, "requires billing" is step 1.
+
 ## Known gaps
 
 - **Sync is unverified on a real device.** The merge and change-detection rules are
