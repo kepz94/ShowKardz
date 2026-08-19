@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useStore, newId, nowIso } from '../lib/store';
 import { isDuplicate, isValidNumber, normalizeNumber } from '../lib/numbers';
-import { downscale } from '../lib/images';
+import { downscale, READING } from '../lib/images';
 import { putPhoto } from '../lib/photos';
 import type { CardRead } from '../lib/vision';
 import { groupName } from '../lib/groups';
@@ -70,7 +70,12 @@ export function Scan({ go }: { go: (r: Route) => void }) {
         setReadError('Card reading is not set up on this build');
         return;
       }
-      const result = await readCard(blob);
+      // Give the reader a better image than the one we keep: the stored copy is
+      // compressed for a storage budget, and those artefacts are what break a
+      // low-contrast foil name. Built from the ORIGINAL file, never from the
+      // already-compressed blob — recompressing a compression is worse than either.
+      const forReading = await downscale(file, READING);
+      const result = await readCard(forReading);
       if (result.name === '' && result.cardNumber === '') {
         setReadError('Nothing readable on that photo — try better light, or type the name');
       } else {

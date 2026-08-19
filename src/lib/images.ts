@@ -7,9 +7,22 @@
  * a bounded long edge and re-encoded as JPEG before it is ever stored.
  */
 
-/** The long edge every stored receipt photo is fitted into. */
-export const MAX_EDGE = 1400;
-const JPEG_QUALITY = 0.72;
+/**
+ * Two different jobs, two different images.
+ *
+ * STORAGE wants small: a thumbnail and a visual reference, kept forever on a
+ * device with a finite budget.
+ *
+ * READING wants detail: OCR on a foil card is a low-contrast problem, and JPEG
+ * artefacts at storage quality land exactly on the thin strokes that make a
+ * silver-on-silver name legible. The read image is bigger and barely
+ * compressed, used once, and never kept.
+ */
+export const STORAGE = { maxEdge: 1400, quality: 0.72 };
+export const READING = { maxEdge: 2000, quality: 0.92 };
+
+/** Back-compat alias for the storage long edge. */
+export const MAX_EDGE = STORAGE.maxEdge;
 
 export interface Size {
   width: number;
@@ -67,9 +80,12 @@ async function decode(file: File): Promise<{
 }
 
 /** Read a photo, screenshot or uploaded image; shrink it; hand back a JPEG. */
-export async function downscale(file: File): Promise<Blob> {
+export async function downscale(
+  file: File,
+  { maxEdge, quality }: { maxEdge: number; quality: number } = STORAGE,
+): Promise<Blob> {
   const decoded = await decode(file);
-  const { width, height } = fitWithin(decoded.width, decoded.height, MAX_EDGE);
+  const { width, height } = fitWithin(decoded.width, decoded.height, maxEdge);
 
   const canvas = document.createElement('canvas');
   canvas.width = width;
@@ -84,7 +100,7 @@ export async function downscale(file: File): Promise<Blob> {
   decoded.release();
 
   const blob = await new Promise<Blob | null>((resolve) =>
-    canvas.toBlob(resolve, 'image/jpeg', JPEG_QUALITY),
+    canvas.toBlob(resolve, 'image/jpeg', quality),
   );
   if (!blob) throw new Error('Could not prepare the image on this device');
   return blob;
