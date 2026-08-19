@@ -71,27 +71,40 @@ export function Scan({ go }: { go: (r: Route) => void }) {
       // already-compressed blob — recompressing a compression is worse than either.
       const forReading = await downscale(file, READING);
 
-      // On-device first: free, private, and needs no account. Google Vision is
-      // only consulted when this finds nothing AND a key exists, so a build
-      // with no key is fully functional rather than degraded.
+      /*
+       * Vision FIRST when a key exists, on-device only as the no-key fallback.
+       *
+       * This order is from a real result, not a preference: on actual cards the
+       * on-device engine returned about three incoherent letters across five
+       * scans. That is what Tesseract is: a DOCUMENT OCR engine, built for flat
+       * high-contrast text on paper. A photograph of a card is scene text —
+       * textured background, perspective, glare, display fonts — which is a
+       * different problem, and the one Vision's TEXT_DETECTION is built for.
+       *
+       * So the on-device reader no longer runs ahead of Vision, costing a second
+       * and a battery hit to produce nothing.
+       */
       let result: CardRead | null = null;
       let firstFailure = '';
-      try {
-        const { readCardOnDevice } = await import('../lib/ocr');
-        result = await readCardOnDevice(forReading);
-      } catch (err) {
-        firstFailure = err instanceof Error ? err.message : 'The card could not be read';
+
+      const { readCard, visionConfigured } = await import('../lib/vision-api');
+      const haveVision = visionConfigured();
+
+      if (haveVision) {
+        try {
+          result = await readCard(forReading);
+        } catch (err) {
+          firstFailure = err instanceof Error ? err.message : 'The card could not be read';
+        }
       }
 
       if (!result?.name) {
-        const { readCard, visionConfigured } = await import('../lib/vision-api');
-        if (visionConfigured()) {
-          try {
-            const better = await readCard(forReading);
-            if (better.name) result = better;
-          } catch (err) {
-            firstFailure ||= err instanceof Error ? err.message : '';
-          }
+        try {
+          const { readCardOnDevice } = await import('../lib/ocr');
+          const local = await readCardOnDevice(forReading);
+          if (local.name || (!haveVision && local.cardNumber)) result = local;
+        } catch (err) {
+          firstFailure ||= err instanceof Error ? err.message : '';
         }
       }
 
@@ -99,7 +112,8 @@ export function Scan({ go }: { go: (r: Route) => void }) {
         setRead(result);
       } else {
         setReadError(firstFailure
-          || 'Nothing readable on that photo — try flatter light, or type the name');
+          || 'Nothing readable on that photo — fill the frame with the card, '
+           + 'flat light, no flash. Or just type the name.');
       }
     } catch (err) {
       setReadError(err instanceof Error ? err.message : 'The card could not be read');
@@ -199,7 +213,7 @@ export function Scan({ go }: { go: (r: Route) => void }) {
               </span>
               <span className="s">
                 <span className="ctx">
-                  {reading ? 'Reading on this device'
+                  {reading ? 'Reading the card'
                     : read?.name ? `Read from the card${read.cardNumber ? ` · #${read.cardNumber}` : ''}`
                     : 'Files with this card'}
                 </span>
