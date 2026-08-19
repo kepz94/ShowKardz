@@ -28,7 +28,13 @@ jobs:
       # The gate has to be able to fail the deploy, so the money math and the
       # duplicate-number rule run before anything ships.
       - run: npm test
+      # The Vision key is injected here rather than committed. It still ends up
+      # in the published bundle — a browser call cannot hide it — so what
+      # actually protects it is the HTTP-referrer restriction and the Vision
+      # quota cap, both set in the Google Cloud console.
       - run: npm run build
+        env:
+          VITE_VISION_KEY: ${{ secrets.VISION_API_KEY }}
       # The interaction specs ship alongside the app rather than being replaced by it.
       - run: cp -r design dist/design
       - uses: actions/configure-pages@v5

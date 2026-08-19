@@ -266,6 +266,8 @@ function CardDetail({ card, onDone }: { card: Card; onDone: () => void }) {
     && !busy;
 
   const title = composeTitle(stack, name, cardNumber || undefined);
+  // Anything at all to search on: the printed name, or the group's product.
+  const searchable = name.trim() !== '' || stack !== undefined;
 
   async function attach(file: File) {
     setBusy(true);
@@ -422,18 +424,25 @@ function CardDetail({ card, onDone }: { card: Card; onDone: () => void }) {
         {title !== '' && <p className="claim">Title: {title}</p>}
       </div>
 
-      {name.trim() !== '' && (
-        <>
-          <a className="evidence" href={compsUrl(stack, name, cardNumber || undefined)}
-             target="_blank" rel="noopener noreferrer">
-            <span>Check real eBay sold listings</span>
-            <span aria-hidden>↗</span>
-          </a>
-          <p className="claim">
-            Market evidence, not a figure this app can know. Read the last handful, then set yours.
-          </p>
-        </>
+      {/* ALWAYS on screen. Hiding this until a name was typed made it invisible
+          on every freshly scanned card — which, now that scanning creates cards
+          from the number alone, is most of them. With nothing to search on it
+          says what it needs, rather than vanishing and reading as "not built". */}
+      {searchable ? (
+        <a className="evidence" href={compsUrl(stack, name, cardNumber || undefined)}
+           target="_blank" rel="noopener noreferrer">
+          <span>Check real eBay sold listings</span>
+          <span aria-hidden>↗</span>
+        </a>
+      ) : (
+        <div className="evidence disabled">
+          <span>Check real eBay sold listings</span>
+          <span className="why">Add a name or a group first</span>
+        </div>
       )}
+      <p className="claim">
+        Market evidence, not a figure this app can know. Read the last handful, then set yours.
+      </p>
 
       <div className="card" style={{ marginTop: 14 }}>
         <div className="grid2">

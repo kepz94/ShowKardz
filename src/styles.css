@@ -331,3 +331,8 @@ input[type=range]{width:100%;margin:12px 0 0;accent-color:var(--ink);height:28px
 /* An inline sub-form: used where navigating away would discard unsaved work. */
 .subform{margin-top:11px;padding:13px;border:1px dashed var(--line2);
          border-radius:var(--r-md);background:var(--raised)}
+
+/* The comps link with nothing to search on yet: present, obviously inert, and
+   saying what it needs — rather than absent, which reads as "not built". */
+.evidence.disabled{color:var(--mut);background:var(--bg);border-style:dashed;cursor:default}
+.evidence .why{font-size:12px;font-weight:500;color:var(--mut);text-align:right}

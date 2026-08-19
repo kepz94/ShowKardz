@@ -14,7 +14,7 @@ Cards carry a plain number sticker — nothing else. The price lives in the app,
 
 ## The five screens
 
-**Scan** — getting cards in, and nothing else. Type the sticker number, optionally photograph the card, next. No collection, no filters, no totals: everything that is not the next card is a reason to look up. Turn on **Group scan** and the running batch appears — that is the one case where seeing your other scans is the point.
+**Scan** — getting cards in, and nothing else. Type the sticker number, photograph the card and Google Vision reads the player name and printed card number off it, next. No collection, no filters, no totals: everything that is not the next card is a reason to look up. Turn on **Group scan** and the running batch appears — that is the one case where seeing your other scans is the point.
 
 **Book** — the collection. Everything ever scanned, with its photo. Name, group, price and floor are filled in here, from the card's own screen: a link to real eBay sold listings, your price, an optional floor. Filter by state or by group, search by name or number.
 
@@ -119,8 +119,11 @@ Both invariants are enforced and covered by tests from day one:
 - **Sync is unverified on a real device.** The merge and change-detection rules are
   covered by tests, but two phones actually reconciling has not been observed —
   that pass is owed.
-- **No camera read.** Sticker number and player name are typed. The one-shot camera
-  read described in the SRD is not built.
+- **The card read needs a key.** Google Cloud Vision is wired but inert without
+  `VISION_API_KEY` set as a repository secret. Without it the app says card reading
+  is not set up rather than failing at the tap; the name is typed instead.
+- **Read accuracy is unmeasured on real cards.** The extraction is tested against
+  synthetic Vision responses, not against foil, refractors or stylised fonts.
 - **Cash sales only.** The trade screen (two dials, who owes cash) is neither
   designed nor built. Hold tabs, lot mode and the dead-weight radar are not built.
 - **One stack at a time.** The night-before flow uses the most recently declared

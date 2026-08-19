@@ -3,6 +3,7 @@ import { useStore, newId, nowIso } from '../lib/store';
 import { isDuplicate, isValidNumber, normalizeNumber } from '../lib/numbers';
 import { downscale } from '../lib/images';
 import { putPhoto } from '../lib/photos';
+import type { CardRead } from '../lib/vision';
 import { groupName } from '../lib/groups';
 import type { Route } from '../App';
 
@@ -26,6 +27,9 @@ export function Scan({ go }: { go: (r: Route) => void }) {
   const [last, setLast] = useState<string | null>(null);
   const [photo, setPhoto] = useState<{ blob: Blob; url: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [reading, setReading] = useState(false);
+  const [read, setRead] = useState<CardRead | null>(null);
+  const [readError, setReadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const numberField = useRef<HTMLInputElement>(null);
@@ -41,14 +45,41 @@ export function Scan({ go }: { go: (r: Route) => void }) {
   async function capture(file: File) {
     setBusy(true);
     setError(null);
+    setRead(null);
+    setReadError(null);
+
+    let blob: Blob;
     try {
-      const blob = await downscale(file);
+      blob = await downscale(file);
       if (photo) URL.revokeObjectURL(photo.url);
       setPhoto({ blob, url: URL.createObjectURL(blob) });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'That image could not be read');
-    } finally {
       setBusy(false);
+      return;
+    }
+    setBusy(false);
+
+    // The read is a bonus on top of a card that already exists. It runs after
+    // the photo is safely in hand, and a failure never blocks scanning — the
+    // name is typeable, and the number and price never came from here anyway.
+    setReading(true);
+    try {
+      const { readCard, visionConfigured } = await import('../lib/vision-api');
+      if (!visionConfigured()) {
+        setReadError('Card reading is not set up on this build');
+        return;
+      }
+      const result = await readCard(blob);
+      if (result.name === '' && result.cardNumber === '') {
+        setReadError('Nothing readable on that photo — try better light, or type the name');
+      } else {
+        setRead(result);
+      }
+    } catch (err) {
+      setReadError(err instanceof Error ? err.message : 'The card could not be read');
+    } finally {
+      setReading(false);
     }
   }
 
@@ -71,13 +102,19 @@ export function Scan({ go }: { go: (r: Route) => void }) {
     }
 
     dispatch({
-      type: 'card/add', id, number: clean, name: '',
+      type: 'card/add', id, number: clean,
+      // Whatever the camera could read. Wrong is cosmetic here and fixable in
+      // the Book; the number and the price never come from this.
+      name: read?.name ?? '',
+      cardNumber: read?.cardNumber || undefined,
       stackId: groupScan && groupId ? groupId : undefined,
       photoId, now: nowIso(),
     });
 
     if (photo) URL.revokeObjectURL(photo.url);
     setPhoto(null);
+    setRead(null);
+    setReadError(null);
     if (cameraInput.current) cameraInput.current.value = '';
     if (groupScan) setBatch((b) => [id, ...b]);
     setLast(clean);
@@ -126,8 +163,18 @@ export function Scan({ go }: { go: (r: Route) => void }) {
           <div className="row" style={{ padding: 0 }}>
             <img className="thumb" src={photo.url} alt="The card you just photographed" />
             <span className="mid">
-              <span className="t">Photo ready</span>
-              <span className="s"><span className="ctx">Files with this card</span></span>
+              <span className="t">
+                {reading ? 'Reading the card…'
+                  : read?.name ? read.name
+                  : 'Photo ready'}
+              </span>
+              <span className="s">
+                <span className="ctx">
+                  {reading ? 'Google Vision'
+                    : read?.name ? `Read from the card${read.cardNumber ? ` · #${read.cardNumber}` : ''}`
+                    : 'Files with this card'}
+                </span>
+              </span>
             </span>
             <button className="x" aria-label="Remove photo" onClick={() => {
               URL.revokeObjectURL(photo.url);
@@ -138,17 +185,27 @@ export function Scan({ go }: { go: (r: Route) => void }) {
         ) : (
           <button className="btn ghost sm" disabled={busy}
                   onClick={() => cameraInput.current?.click()}>
-            {busy ? 'Working…' : 'Photograph the card (optional)'}
+            {busy ? 'Working…' : 'Photograph the card — reads the name'}
           </button>
         )}
 
         {error && (
           <div className="flash bad"><div><div className="b">{error}</div></div></div>
         )}
+        {readError && (
+          <div className="flash bad">
+            <div>
+              <div className="b">Could not read the card</div>
+              <div className="s">{readError} — the card still scans in, name it in the Book.</div>
+            </div>
+          </div>
+        )}
 
         <button className="btn" style={{ marginTop: 12 }} disabled={!ready} onClick={() => void add()}>
           Scan it in
-          <span className="sub">Number only — name and price come later</span>
+          <span className="sub">
+            {read?.name ? `As ${read.name}` : 'Number is all it needs — the rest comes later'}
+          </span>
         </button>
       </div>
 
