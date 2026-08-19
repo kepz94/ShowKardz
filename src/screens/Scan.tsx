@@ -4,7 +4,7 @@ import { isDuplicate, isValidNumber, normalizeNumber } from '../lib/numbers';
 import { liveCards } from '../lib/cards';
 import { downscale, READING } from '../lib/images';
 import { putPhoto } from '../lib/photos';
-import { composeTitle } from '../lib/title';
+import { prettyBlock } from '../lib/title';
 import { compsUrl } from '../lib/comps';
 import { dollarsToCents, formatCents } from '../lib/money';
 import type { CardRead } from '../lib/vision';
@@ -26,12 +26,17 @@ import type { Route } from '../App';
  * which is just a field that remembers its last value, so that is what it is.
  *
  * WHAT THE CAMERA READ IS NOT PARSED. Vision returns each block of text with
- * its own box, so the screen lists the blocks and lets the dealer untick the
- * ones they do not want and edit the ones that need it. An earlier version
- * sorted them into Year / Product / Team fields and that is guesswork: deciding
- * which line is the team is wrong on every card whose layout differs, while the
- * person holding the card can see it. What stays ticked is what the title and
- * the eBay search are built from.
+ * its own box, so a confirmation sheet lists the blocks and the dealer unticks
+ * what they do not want, edits what needs it, and puts them in the order they
+ * want. An earlier version sorted them into Year / Product / Team fields, and
+ * that is guesswork: deciding which line is the team is wrong on every card
+ * whose layout differs, while the person holding the card can see it.
+ *
+ * Confirming WRITES the kept blocks, in order, into the card name — and the
+ * sheet closes for good. They are not left on the form afterwards, because the
+ * decision has been made and its answer is sitting in the field. From there the
+ * name is an ordinary field the dealer owns and nothing re-derives it behind
+ * their back. To revisit the read, retake or re-upload the photo.
  *
  * The group still exists as a fallback for a card typed in with no photo, and
  * for a parallel, which is the one thing a front rarely prints.
@@ -73,6 +78,23 @@ export function Scan({ go }: { go: (r: Route) => void }) {
 
   const keptText = sections.filter((s) => s.kept).map((s) => s.text.trim()).filter(Boolean);
 
+  /** The name the kept blocks make, in the order they are currently in. */
+  const composedName = keptText.map(prettyBlock).filter(Boolean).join(' ');
+
+  /** Swap a block with its neighbour. Order here is order in the name. */
+  const move = (i: number, dir: -1 | 1) =>
+    setSections((all) => {
+      const j = i + dir;
+      if (j < 0 || j >= all.length) return all;
+      const next = all.slice();
+      const a = next[i];
+      const b = next[j];
+      if (!a || !b) return all;
+      next[i] = b;
+      next[j] = a;
+      return next;
+    });
+
   const [photo, setPhoto] = useState<{ blob: Blob; url: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [reading, setReading] = useState(false);
@@ -97,8 +119,7 @@ export function Scan({ go }: { go: (r: Route) => void }) {
   const floorTooHigh = floorCents != null && priceCents != null && floorCents > priceCents;
 
   const stack: Stack | undefined = db.stacks.find((s) => s.id === groupId);
-  const title = composeTitle(stack, name, cardNumber || undefined, keptText);
-  const searchable = keptText.length > 0 || name.trim() !== '' || stack !== undefined;
+  const searchable = name.trim() !== '' || stack !== undefined;
 
   const ready = isValidNumber(number) && !dup && !busy && !floorTooHigh
     && (price.trim() === '' || (priceCents != null && priceCents > 0));
@@ -264,11 +285,15 @@ export function Scan({ go }: { go: (r: Route) => void }) {
    * The row says "Edit" in words. A tappable-looking string of text is not an
    * obvious edit affordance on a screen where most text is just text.
    */
-  const sectionRow = (s: { id: string; text: string; kept: boolean }) => (
+  const sectionRow = (
+    s: { id: string; text: string; kept: boolean },
+    i: number,
+    all: typeof sections,
+  ) => (
     editingSection === s.id ? (
       <div className="rd edit" key={s.id}>
         <input autoFocus value={s.text} aria-label="Edit what was read"
-               onChange={(e) => setSections((all) => all.map((x) =>
+               onChange={(e) => setSections((xs) => xs.map((x) =>
                  x.id === s.id ? { ...x, text: e.target.value } : x))}
                onKeyDown={(e) => e.key === 'Enter' && setEditingSection(null)} />
         <button className="done" onClick={() => setEditingSection(null)}>Done</button>
@@ -277,13 +302,20 @@ export function Scan({ go }: { go: (r: Route) => void }) {
       <div className={`rd${s.kept ? ' on' : ' off'}`} key={s.id}>
         <button className="tick" aria-pressed={s.kept}
                 aria-label={s.kept ? `Drop ${s.text}` : `Keep ${s.text}`}
-                onClick={() => setSections((all) => all.map((x) =>
+                onClick={() => setSections((xs) => xs.map((x) =>
                   x.id === s.id ? { ...x, kept: !x.kept } : x))}>✓</button>
         <button className="txt" onClick={() => setEditingSection(s.id)}>{s.text}</button>
+        {/* Order is the order it lands in the name, so it is worth changing. */}
+        <span className="move">
+          <button disabled={i === 0} aria-label={`Move ${s.text} up`}
+                  onClick={() => move(i, -1)}>↑</button>
+          <button disabled={i === all.length - 1} aria-label={`Move ${s.text} down`}
+                  onClick={() => move(i, 1)}>↓</button>
+        </span>
         <button className="pen" aria-label={`Edit ${s.text}`}
                 onClick={() => setEditingSection(s.id)}>Edit</button>
         <button className="x" aria-label={`Delete ${s.text}`}
-                onClick={() => setSections((all) => all.filter((x) => x.id !== s.id))}>×</button>
+                onClick={() => setSections((xs) => xs.filter((x) => x.id !== s.id))}>×</button>
       </div>
     )
   );
@@ -394,33 +426,28 @@ export function Scan({ go }: { go: (r: Route) => void }) {
        * is what the title and the eBay search are built from, which is why the
        * search line below updates as they toggle.
        */}
-      {sections.length > 0 && (
-        <>
-          <h2>
-            <span>Read from the card</span>
-            <span className="count">
-              {keptText.length === sections.length
-                ? `${sections.length} found`
-                : `${keptText.length} of ${sections.length} kept`}
-            </span>
-          </h2>
-          <div className="reads">{sections.map(sectionRow)}</div>
-        </>
-      )}
-
-      {title.trim() !== '' && (
-        <div className="searchprev">
-          <div className="k">Card name</div>
-          <div className="v">{title}</div>
-        </div>
-      )}
+      {/*
+       * The blocks live in the confirmation sheet and nowhere else. Once
+       * confirmed they ARE the name field, so leaving a list of ticked boxes on
+       * the form would be asking the same question twice — the decision is
+       * already made and visible in the field below.
+       *
+       * To revisit it, retake or re-upload the photo: the sheet comes back.
+       */}
 
       <div className="card">
         <div className="field">
-          <label htmlFor="s-name">Name on card</label>
-          <input id="s-name" type="text" value={name} placeholder="Type the name"
-                 className={read.name ? 'from-read' : undefined}
-                 onChange={(e) => { setName(e.target.value); setRead({ name: false }); }} />
+          <label htmlFor="s-name">Card name</label>
+          {/*
+           * A textarea, not an input. Once the read is confirmed this holds
+           * everything printed on the card — "Anthony Edwards 2023 Panini Prizm
+           * Timberwolves 58" — and a single-line box shows about half of that
+           * with the rest scrolled out of sight, which is the worst possible
+           * shape for a field the dealer is meant to check and correct.
+           */}
+          <textarea id="s-name" rows={2} value={name} placeholder="Type the name"
+                    className={read.name ? 'from-read' : undefined}
+                    onChange={(e) => { setName(e.target.value); setRead({ name: false }); }} />
         </div>
 
         <div className="grid2">
@@ -497,7 +524,12 @@ export function Scan({ go }: { go: (r: Route) => void }) {
        */}
       {confirmRead && (
         <>
-          <div className="scrim" onClick={() => setConfirmRead(false)} />
+          {/* Tapping outside applies what is shown, rather than silently
+              dropping the read while leaving the blocks ticked behind it. */}
+          <div className="scrim" onClick={() => {
+            if (composedName !== '') { setName(composedName); setRead({ name: true }); }
+            setConfirmRead(false);
+          }} />
           <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="rd-t">
             <div className="shead">
               <div>
@@ -513,9 +545,9 @@ export function Scan({ go }: { go: (r: Route) => void }) {
               <div className="reads">{sections.map(sectionRow)}</div>
 
               <div className="searchprev" style={{ marginTop: 12 }}>
-                <div className="k">Card name</div>
-                <div className={`v${title.trim() === '' ? ' muted' : ''}`}>
-                  {title.trim() === '' ? 'Nothing kept' : title}
+                <div className="k">Becomes the card name</div>
+                <div className={`v${composedName === '' ? ' muted' : ''}`}>
+                  {composedName === '' ? 'Nothing kept' : composedName}
                 </div>
               </div>
             </div>
@@ -525,7 +557,18 @@ export function Scan({ go }: { go: (r: Route) => void }) {
                 setSections([]);
                 setConfirmRead(false);
               }}>Use none</button>
-              <button className="btn money" onClick={() => setConfirmRead(false)}>
+              {/*
+               * Confirming WRITES the blocks into the name field, in the order
+               * they are in. From here the name is an ordinary field the dealer
+               * owns: editing it is not undone by anything re-deriving a title
+               * from the blocks behind their back.
+               */}
+              <button className="btn money" disabled={composedName === ''}
+                      onClick={() => {
+                        setName(composedName);
+                        setRead({ name: true });
+                        setConfirmRead(false);
+                      }}>
                 Keep these
                 <span className="sub">{keptText.length} of {sections.length}</span>
               </button>

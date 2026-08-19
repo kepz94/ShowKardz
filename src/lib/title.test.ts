@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { composeTitle, cardLabel } from './title';
+import { composeTitle, cardLabel, prettyBlock } from './title';
 import type { Card, Stack } from '../types';
 
 const prizm: Stack = {
@@ -71,66 +71,68 @@ describe('cardLabel', () => {
    Kept blocks. What the dealer ticked off the card IS the title — nothing
    reorders it, drops it, or second-guesses which line was the team.
 ------------------------------------------------------------------------- */
-describe('composeTitle — blocks kept off the card', () => {
+/* -------------------------------------------------------------------------
+   A card that came from a confirmed read.
+
+   Confirming writes the kept blocks, in the dealer's chosen order, into the
+   NAME field. So by the time anything composes a title the name already holds
+   the year, the product, the team and the number — and the title is the name.
+   Re-deriving it from the blocks would undo any edit made afterwards.
+------------------------------------------------------------------------- */
+describe('composeTitle — a card with a confirmed read', () => {
   const stack: Stack = {
     id: 's1', year: '2019', product: 'Old Group', parallel: 'Base',
     createdAt: '2026-08-19T10:00:00.000Z',
   };
+  const blocks = ['2023 PANINI PRIZM', 'ANTHONY', 'EDWARDS', 'TIMBERWOLVES # 58'];
 
-  it('uses the kept blocks and ignores the group', () => {
-    // The group is a default applied to a run of cards; these came off the card
-    // in hand, so they win.
-    expect(composeTitle(stack, 'Anthony Edwards', '58',
-      ['2023 PANINI PRIZM', 'ANTHONY', 'EDWARDS', 'TIMBERWOLVES # 58']))
+  it('is the name, which already carries the whole read', () => {
+    expect(composeTitle(stack, 'Anthony Edwards 2023 Panini Prizm Timberwolves 58', '58', blocks))
       .toBe('Anthony Edwards 2023 Panini Prizm Timberwolves 58');
   });
 
-  it('drops a block the dealer unticked', () => {
-    expect(composeTitle(undefined, 'Anthony Edwards', '58',
-      ['2023 PANINI PRIZM', 'ANTHONY EDWARDS']))
+  it('does not re-append the blocks, so nothing is repeated', () => {
+    expect(composeTitle(undefined, 'Anthony Edwards 2023 Panini Prizm', undefined, blocks))
       .toBe('Anthony Edwards 2023 Panini Prizm');
   });
 
-  it('keeps an edited block exactly as edited', () => {
-    expect(composeTitle(undefined, '', undefined, ['2023 Panini Prizm Silver']))
-      .toBe('2023 Panini Prizm Silver');
+  it('respects an edit made to the name after confirming', () => {
+    // The dealer cut the team out. It must not come back from the blocks.
+    expect(composeTitle(undefined, 'Anthony Edwards 2023 Panini Prizm', undefined, blocks))
+      .not.toContain('Timberwolves');
   });
 
-  it('falls back to the group when nothing was kept', () => {
-    // A card typed in with no photo still gets a usable title.
+  it('ignores the group, which is only a default for a run of cards', () => {
+    expect(composeTitle(stack, 'Anthony Edwards Prizm', undefined, blocks))
+      .not.toContain('Old Group');
+  });
+
+  it('falls back to the group when there was no read at all', () => {
     expect(composeTitle(stack, 'Anthony Edwards', '58', []))
       .toBe('2019 Old Group Anthony Edwards 58');
   });
 
-  it('falls back to the group when every block was unticked', () => {
-    expect(composeTitle(stack, 'Anthony Edwards', undefined, ['   ', '']))
+  it('falls back to the group when printed is absent', () => {
+    expect(composeTitle(stack, 'Anthony Edwards', undefined))
       .toBe('2019 Old Group Anthony Edwards');
   });
 });
 
-describe('composeTitle — the name leads', () => {
-  it('does not repeat a name printed stacked over two lines', () => {
-    // The blocks carry "ANTHONY" and "EDWARDS" separately. Both are already in
-    // the name, so neither is appended again.
-    expect(composeTitle(undefined, 'Anthony Edwards', undefined,
-      ['ANTHONY', 'EDWARDS', 'TIMBERWOLVES']))
-      .toBe('Anthony Edwards Timberwolves');
+describe('prettyBlock — what a kept block looks like in the name', () => {
+  it('title-cases a shouted block, because cards print in caps', () => {
+    expect(prettyBlock('2023 PANINI PRIZM')).toBe('2023 Panini Prizm');
   });
 
-  it('does not repeat a name printed on one line', () => {
-    expect(composeTitle(undefined, 'Victor Wembanyama', undefined,
-      ['2024 TOPPS CHROME', 'VICTOR WEMBANYAMA', 'SAN ANTONIO SPURS']))
-      .toBe('Victor Wembanyama 2024 Topps Chrome San Antonio Spurs');
+  it('leaves a normally-cased block alone', () => {
+    expect(prettyBlock('Panini Prizm Silver')).toBe('Panini Prizm Silver');
   });
 
-  it('keeps a block that merely shares a word with the name', () => {
-    // "Edwards Field" is not the name, so it survives.
-    expect(composeTitle(undefined, 'Anthony Edwards', undefined, ['EDWARDS FIELD']))
-      .toBe('Anthony Edwards Edwards Field');
+  it('drops the hash and closes the gap Vision leaves after it', () => {
+    // "#" and "58" come back as separate words, so the block reads "# 58".
+    expect(prettyBlock('TIMBERWOLVES # 58')).toBe('Timberwolves 58');
   });
 
-  it('still lists the blocks when there is no name at all', () => {
-    expect(composeTitle(undefined, '', undefined, ['2023 PANINI PRIZM', 'TIMBERWOLVES']))
-      .toBe('2023 Panini Prizm Timberwolves');
+  it('is empty for a block that is only punctuation', () => {
+    expect(prettyBlock('#')).toBe('');
   });
 });

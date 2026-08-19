@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { pickCardText, groupIntoLines, type VisionAnnotation } from './vision';
 import { compsUrl } from './comps';
+import { prettyBlock } from './title';
 import real from './__real-vision-response.json';
 
 /**
@@ -84,8 +85,10 @@ describe('the comps query the read produces', () => {
   const read1 = pickCardText((real.responses[0]?.textAnnotations ?? []).slice(1) as VisionAnnotation[]);
 
   it('searches the card in hand, not just the player', () => {
-    // Everything the read found, all kept — which is what the screen starts at.
-    const url = compsUrl(undefined, read1.name, read1.cardNumber, read1.lines);
+    // Everything the read found, all kept — which is what the sheet starts at,
+    // joined into the card name exactly as confirming it does.
+    const confirmedName = read1.lines.map(prettyBlock).filter(Boolean).join(' ');
+    const url = compsUrl(undefined, confirmedName, read1.cardNumber, read1.lines);
     const kw = decodeURIComponent(new URL(url).searchParams.get('_nkw') ?? '').replace(/\+/g, ' ');
     expect(kw).toContain('2023');
     expect(kw).toContain('Panini Prizm');

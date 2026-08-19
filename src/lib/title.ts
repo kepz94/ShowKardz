@@ -16,7 +16,7 @@ import type { Card, Stack } from '../types';
 const BASE_PARALLEL = 'base';
 
 /** Cards shout. Title-case them so a composed title reads like a listing. */
-function pretty(text: string): string {
+export function prettyBlock(text: string): string {
   const t = text.replace(/#/g, ' ').replace(/\s+/g, ' ').trim();
   if (t !== t.toUpperCase()) return t;
   return t.toLowerCase().replace(/(^|[\s'-])(\p{L})/gu, (_, sep: string, ch: string) => sep + ch.toUpperCase());
@@ -39,27 +39,16 @@ export function composeTitle(
   cardNumber?: string,
   printed?: string[],
 ): string {
-  const kept = (printed ?? []).map(pretty).filter(Boolean);
-  if (kept.length > 0) {
-    /*
-     * THE NAME LEADS, then everything else printed on the card.
-     *
-     * Printed order buries the player in the middle — "2023 Panini Prizm
-     * Anthony Edwards Timberwolves 58" — and the player is what a title gets
-     * scanned for in a list. Everything else still goes in, because with the
-     * number of variations of one card in circulation, those are what make a
-     * particular card unique.
-     *
-     * Blocks that only repeat the name are dropped, or a name printed stacked
-     * over two lines comes out as "Anthony Edwards Anthony Edwards".
-     */
-    const nameWords = new Set(name.toLowerCase().split(/\s+/).filter(Boolean));
-    const rest = kept.filter((block) => {
-      const words = block.toLowerCase().split(/\s+/).filter(Boolean);
-      return words.length === 0 || !words.every((w) => nameWords.has(w));
-    });
-    return [name.trim(), ...rest].filter(Boolean).join(' ');
-  }
+  /*
+   * A card that came from a confirmed read: THE NAME IS THE TITLE.
+   *
+   * Confirming the read writes the kept blocks, in the order the dealer put
+   * them in, straight into the name field — so the name already carries the
+   * year, the product, the team and the number. Appending anything here would
+   * repeat it, and re-deriving the title from the blocks would quietly undo an
+   * edit made to the name afterwards. The dealer's field wins.
+   */
+  if (printed && printed.length > 0) return name.trim();
 
   const parallel = stack?.parallel.trim() ?? '';
   const parts = [
