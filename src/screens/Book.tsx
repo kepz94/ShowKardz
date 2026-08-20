@@ -5,6 +5,7 @@ import { composeTitle } from '../lib/title';
 import { compsUrl } from '../lib/comps';
 import { dollarsToCents, formatCents } from '../lib/money';
 import { cardsInGroup, groupName, groupRows, NO_GROUP, statsFor, totalInCase } from '../lib/groups';
+import { isPacked } from '../lib/packing';
 import { downscale } from '../lib/images';
 import { putPhoto } from '../lib/photos';
 import { PhotoThumb } from '../components/PhotoThumb';
@@ -36,7 +37,14 @@ export function Book({ go, openCardId }: {
   const [renaming, setRenaming] = useState<Stack | null>(null);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
 
-  if (declaring) return <NewGroup onDone={() => setDeclaring(false)} />;
+  if (declaring) {
+    return (
+      <NewGroup onDone={(createdId) => {
+        setDeclaring(false);
+        if (createdId != null) setOpenGroup(createdId);
+      }} />
+    );
+  }
   if (renaming) return <NewGroup existing={renaming} onDone={() => setRenaming(null)} />;
 
   if (editing) {
@@ -68,7 +76,13 @@ function Collection({
   onOpenGroup: (id: string) => void;
 }) {
   const { db } = useStore();
-  const [tab, setTab] = useState<'cards' | 'groups'>('cards');
+  /*
+   * GROUPS LEAD. A group is what gets carried, packed and totalled, so it is
+   * what the Book opens on. The Cards tab stays because it is the only place
+   * that searches the whole book by name or number — narrowing to one group
+   * cannot answer "where is 455".
+   */
+  const [tab, setTab] = useState<'cards' | 'groups'>('groups');
   const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
 
@@ -97,7 +111,7 @@ function Collection({
       <header className="screen-head">
         <div>
           <div className="eb">Book</div>
-          <h1>Your collection</h1>
+          <h1>{tab === 'groups' ? 'Your groups' : 'Your collection'}</h1>
         </div>
         {/* On the groups tab the question is what the case is WORTH, since that
             is what every row below adds up to. On the cards tab it stays a
@@ -188,7 +202,16 @@ function BookTabs({ tab, setTab }: { tab: 'cards' | 'groups'; setTab: (t: 'cards
  * One card, as a row. Shared by the collection and by a group's card list so the
  * two cannot drift — the same card has to read identically wherever it appears.
  */
-function CardRow({ card: c, onEdit }: { card: Card; onEdit: (id: string) => void }) {
+function CardRow({ card: c, onEdit, inGroup }: {
+  card: Card;
+  onEdit: (id: string) => void;
+  /**
+   * Rendered inside a group, where naming the group on every row says the same
+   * thing as the heading above it. The floor goes there instead — the number
+   * that actually changes how the card gets sold.
+   */
+  inGroup?: boolean;
+}) {
   const { db } = useStore();
   const stack = db.stacks.find((s) => s.id === c.stackId);
   return (
@@ -205,7 +228,11 @@ function CardRow({ card: c, onEdit }: { card: Card; onEdit: (id: string) => void
           {c.status === 'sold' && <span className="pill sold">Sold</span>}
           <span className="ctx">
             {c.photoId ? `${c.number} · ` : ''}
-            {stack ? groupName(stack) : c.name.trim() === '' ? 'Tap to fill in' : ''}
+            {inGroup
+              ? (c.floorCents != null
+                  ? `Floor ${formatCents(c.floorCents)}`
+                  : c.status === 'available' ? 'No floor' : '')
+              : stack ? groupName(stack) : c.name.trim() === '' ? 'Tap to fill in' : ''}
           </span>
         </span>
       </span>
@@ -236,6 +263,10 @@ function GroupList({ onOpen, onNewGroup }: { onOpen: (id: string) => void; onNew
 
   return (
     <>
+      <p className="lede" style={{ marginTop: 11 }}>
+        {rows.length} {rows.length === 1 ? 'group' : 'groups'} · tap one to see its cards
+      </p>
+
       <h2>
         <span>Groups</span>
         <span className="count">{rows.length}</span>
@@ -250,22 +281,36 @@ function GroupList({ onOpen, onNewGroup }: { onOpen: (id: string) => void; onNew
               total them together.
             </div>
           </div>
-        ) : rows.map((r) => (
-          <button className="grp" key={r.id === '' ? '__none' : r.id} onClick={() => onOpen(r.id)}>
-            <span className="mid">
-              <span className={`t${r.ungrouped ? ' muted' : ''}`}>{r.name}</span>
-              <span className="s">
-                {r.cardCount} {r.cardCount === 1 ? 'card' : 'cards'}
-                {r.unpricedCount > 0 && ` · ${r.unpricedCount} unpriced`}
+        ) : rows.map((r) => {
+          const packed = isPacked(db.packedStackIds, r.id);
+          return (
+            <button className={`grp${packed ? ' packed' : ''}`}
+                    key={r.id === '' ? '__none' : r.id} onClick={() => onOpen(r.id)}>
+              <span className={`cnt${packed ? ' on' : ''}`}>{r.cardCount}</span>
+              <span className="mid">
+                <span className={`t${r.ungrouped ? ' muted' : ''}`}>{r.name}</span>
+                {/*
+                  * BOTH OF THESE ARE PILLS, not subline text. Packed state was
+                  * tried in the subline and it clipped behind the value on a
+                  * narrow phone — a state you cannot see is a state you do not
+                  * have. A pill keeps its own box and wraps instead of hiding.
+                  */}
+                <span className="s">
+                  {packed && <span className="pill packed">Packed</span>}
+                  {r.unpricedCount > 0 && (
+                    <span className="pill unpriced">{r.unpricedCount} unpriced</span>
+                  )}
+                  <span className="ctx">{r.cardCount} in case</span>
+                </span>
               </span>
-            </span>
-            <span className="amt">{formatCents(r.valueCents)}</span>
-          </button>
-        ))}
+              <span className="amt">{formatCents(r.valueCents)}</span>
+            </button>
+          );
+        })}
       </div>
 
       <button className="btn ghost sm" style={{ marginTop: 12 }} onClick={onNewGroup}>
-        New group
+        + New group
       </button>
     </>
   );
@@ -319,6 +364,10 @@ function GroupDetail({
 
   return (
     <>
+      {/* At the top, where a back control is looked for — the one at the bottom
+          is a long scroll away once a group has any cards in it. */}
+      <button className="backlink" onClick={onBack}>← Groups</button>
+
       <header className="screen-head">
         <div>
           <div className="eb">Book · group</div>
@@ -358,12 +407,25 @@ function GroupDetail({
       </h2>
 
       <div className="list">
-        {shown.length === 0 ? (
+        {cards.length === 0 ? (
+          /* Truly empty, so the answer is "put something in it". A filter that
+             matched nothing is a different situation and gets a different line. */
+          <div className="empty dashed">
+            <div className="t">This group is empty</div>
+            <div className="s">Nothing is filed under {ungrouped ? 'no group' : 'this name'} yet.</div>
+            {!ungrouped && (
+              <button className="btn sm" style={{ marginTop: 14, width: 'auto', display: 'inline-flex' }}
+                      onClick={() => setAssigning(true)}>
+                Add a card to this group
+              </button>
+            )}
+          </div>
+        ) : shown.length === 0 ? (
           <div className="empty">
             <div className="t">Nothing here</div>
             <div className="s">No card in this group matches the filter.</div>
           </div>
-        ) : shown.map((c) => <CardRow key={c.id} card={c} onEdit={onEdit} />)}
+        ) : shown.map((c) => <CardRow key={c.id} card={c} onEdit={onEdit} inGroup />)}
       </div>
 
       {!ungrouped && (
@@ -475,7 +537,7 @@ function AssignCards({ stack, onDone }: { stack: Stack; onDone: () => void }) {
                 ? 'Pick some cards'
                 : `File ${picked.size} ${picked.size === 1 ? 'card' : 'cards'} into ${groupName(stack)}`}
             </button>
-            <button className="btn ghost sm" style={{ marginTop: 9 }} onClick={onDone}>Cancel</button>
+            <button className="btn ghost sm" style={{ marginTop: 9 }} onClick={() => onDone()}>Cancel</button>
           </div>
         </>
       )}
@@ -493,16 +555,27 @@ function AssignCards({ stack, onDone }: { stack: Stack; onDone: () => void }) {
  * and a product onto every group whether or not either applied, and made
  * "Dollar box" impossible to say. See the note on Stack in types.ts.
  */
-function NewGroup({ onDone, existing }: { onDone: () => void; existing?: Stack }) {
+function NewGroup({ onDone, existing }: {
+  /** Called with the new group's id on create, so the caller can open it. */
+  onDone: (createdId?: string) => void;
+  existing?: Stack;
+}) {
   const { dispatch } = useStore();
   const [name, setName] = useState(existing ? groupName(existing) : '');
   const renaming = existing != null;
 
   function submit() {
     if (name.trim() === '') return;
-    if (renaming) dispatch({ type: 'stack/rename', stackId: existing.id, name: name.trim(), now: nowIso() });
-    else dispatch({ type: 'stack/add', id: newId(), name: name.trim(), now: nowIso() });
-    onDone();
+    if (renaming) {
+      dispatch({ type: 'stack/rename', stackId: existing.id, name: name.trim(), now: nowIso() });
+      onDone();
+      return;
+    }
+    // Making a group is never the goal — filling it is. Hand the id back so the
+    // caller drops straight into it instead of returning to a list to find it.
+    const id = newId();
+    dispatch({ type: 'stack/add', id, name: name.trim(), now: nowIso() });
+    onDone(id);
   }
 
   return (
@@ -533,7 +606,7 @@ function NewGroup({ onDone, existing }: { onDone: () => void; existing?: Stack }
         <button className="btn" disabled={name.trim() === ''} onClick={submit}>
           {renaming ? 'Save name' : 'Create group'}
         </button>
-        <button className="btn ghost sm" style={{ marginTop: 9 }} onClick={onDone}>Cancel</button>
+        <button className="btn ghost sm" style={{ marginTop: 9 }} onClick={() => onDone()}>Cancel</button>
       </div>
     </>
   );

@@ -717,3 +717,35 @@ textarea#s-name.from-read{background:var(--money-soft);border-color:var(--money-
 .ontable .chip.change{border-style:dashed;border-color:var(--line2);color:var(--ink2);
                       cursor:pointer;font:inherit;font-size:11.5px;font-weight:650;
                       padding:5px 10px}
+
+/* ---- Book: groups lead ----------------------------------------------------
+   A group is what gets carried, packed and totalled, so it is what the Book
+   opens on. Its row has to answer three things at a glance: how big, whether
+   it is going to the show, and whether anything in it still has no price. */
+.backlink{background:none;border:0;padding:8px 2px 8px 0;margin:-8px 0 2px;
+          cursor:pointer;font:inherit;font-size:14px;font-weight:650;
+          color:var(--ink2);min-height:44px;display:inline-flex;align-items:center}
+.backlink:hover{color:var(--ink)}
+
+.grp .cnt{flex:none;min-width:34px;height:34px;padding:0 7px;border-radius:9px;
+          background:var(--bg);border:1px solid var(--line2);color:var(--ink2);
+          font-family:var(--mono);font-size:13px;font-weight:700;
+          display:flex;align-items:center;justify-content:center}
+.grp .cnt.on{background:var(--money-soft);border-color:var(--money-line);color:var(--money)}
+.grp.packed{border-color:var(--money-line)}
+
+/* Both states are pills so each keeps its own box. Put in the subline as bare
+   text they clipped behind the value on a narrow phone, and a state you cannot
+   see is a state you do not have. */
+.pill.packed{background:var(--money-soft);color:var(--money);border:1px solid var(--money-line)}
+
+/* The subline wraps as WHOLE items, never mid-phrase. With two pills on a
+   390px row the trailing count broke across lines and rendered "3 in / case",
+   which reads as a bug. Measuring the name for clipping did not catch it —
+   only looking at it did. */
+.grp .s{display:flex;flex-wrap:wrap;align-items:center;gap:6px;row-gap:5px}
+.grp .s .ctx{white-space:nowrap}
+
+/* An empty group is a prompt, not a dead end — dashed so it reads as a slot
+   waiting to be filled rather than a result that came back empty. */
+.empty.dashed{border:1.5px dashed var(--line2);border-radius:var(--r-lg);background:transparent}
