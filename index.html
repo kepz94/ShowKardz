@@ -5,7 +5,7 @@
 <!-- viewport-fit=cover so the safe-area insets in styles.css have something to do -->
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="description" content="Number-keyed, offline-first table tool for sports card show dealers.">
-<meta name="theme-color" content="#F2F2EF">
+<meta name="theme-color" content="#e7dcc6">
 <!-- Add to Home Screen is a requirement here, not a suggestion: iOS caps
      script-writable storage at seven days of inactivity for a browser tab,
      while an installed home-screen app gets a days-of-use counter that resets
@@ -13,6 +13,15 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="SHOWKARDZ">
+<!-- Organic: Caprasimo carries the screen titles and the big numbers, Figtree
+     everything else. BOTH ARE SELF-HOSTED, and that is not a preference. The
+     service worker handles same-origin requests only, on purpose (auth and
+     Firestore must never be served a stale answer), so a Google-hosted font is
+     never cached by it — and the show floor is meant to need zero signal. A
+     display face that silently falls back to Georgia at the table reads as
+     broken. Same-origin means it ships and caches with the app, and it takes a
+     third party off the critical path. -->
+<link rel="preload" href="./fonts/figtree-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-180.png">
 <link rel="icon" href="./icon-512.png">

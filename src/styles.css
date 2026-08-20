@@ -1,47 +1,91 @@
+/* Self-hosted so the service worker caches them — see the note in index.html.
+   swap: the fallback shows immediately rather than leaving a blank heading.
+   Paths are relative so they resolve under the /ShowKardz/ Pages base. */
+@font-face{
+  font-family:'Caprasimo';font-style:normal;font-weight:400;font-display:swap;
+  src:url('../fonts/caprasimo-latin.woff2') format('woff2');
+}
+@font-face{
+  font-family:'Figtree';font-style:normal;font-weight:300 900;font-display:swap;
+  src:url('../fonts/figtree-latin.woff2') format('woff2');
+}
+
 /* ============================================================================
-   SHOWKARDZ
+   SHOWKARDZ — Organic
 
-   Reference class is a real register — Square, Shopify POS — not a document.
-   The screen is read at arm's length under bad hall lighting, one-handed, with
-   a buyer waiting. That drives everything below: money is the largest thing on
-   any screen, tap targets are generous, and the surfaces carry enough depth to
-   separate what is actionable from what is only information.
+   Restyled from SHOWKARDZ.dc.html. The reference class is still a register you
+   work one-handed at a table, so nothing about the hierarchy moved: money is the
+   largest thing on any screen and tap targets stay generous. What changed is the
+   material — a warm cream ground with sage, brick and terracotta on it, and a
+   display face on the titles and the figures.
 
-   Neutrals are warm (a green-olive bias, not grey) so they sit with the paper
-   ground rather than fighting it. One accent does the work: a deep green that
-   means money. Red is reserved — it only ever means a floor is about to break.
+   HOW THESE VALUES WERE OBTAINED. The DC references an external design-system
+   stylesheet that is not distributed with it, so the tokens below were recovered
+   from the DC itself: every one marked "confirmed" appears in the file as a
+   literal in the same role as its var(), e.g. `border:1px solid #dcd3c4` sits
+   beside 31 uses of `var(--color-neutral-300)` on the same 1px card border.
+   Two ramp steps (200, 500) had no literal anywhere in the file and are
+   interpolated — they are marked, and they are the only invented colours here.
    ========================================================================== */
 :root{
-  --bg:#F3F3EF;
-  --paper:#FFFFFF;
-  --raised:#FAFAF7;
-  --ink:#14140F;
-  --ink2:#4A4A42;
-  --mut:#7C7C72;
-  --line:#E8E8E2;
-  --line2:#D6D6CE;
+  /* --- ground and surfaces (confirmed) --- */
+  --bg:#e7dcc6;          /* --color-bg: the body ground */
+  --paper:#f9f4ed;       /* --color-neutral-100: every card sits on the ground */
+  --raised:#fffdf9;      /* hover/active lift, lighter than paper */
+  --line:#dcd3c4;        /* --color-neutral-300: the 1px card border */
+  --line2:#c0b6a5;       /* --color-neutral-400: a heavier edge */
 
-  --money:#0B6B45;
-  --money-soft:#E9F3ED;
-  --money-line:#C4E0D0;
+  /* --- warm neutral ramp --- */
+  --n200:#ece4d8;        /* INTERPOLATED — no literal in the DC */
+  --n500:#a1978a;        /* INTERPOLATED — no literal in the DC */
+  --mut:#82796a;         /* --color-neutral-600: muted label and subline text */
+  --ink2:#645c50;        /* --color-neutral-700: secondary body text */
+  --ink:#201e1d;         /* --color-text */
 
-  --alert:#B23417;
-  --alert-soft:#FBEEE9;
-  --alert-line:#F0CEC2;
+  /* --- sage: money, and a group that is going to the show --- */
+  --money:#56633f;
+  --money-deep:#3d472b;  /* the big figures */
+  --money-soft:#e1eecc;  /* "in the case" panels */
+  --money-line:#ccdbb2;
+  --money-edge:#a9bd85;
 
-  --band:#14140F;
-  --band-2:#22221C;
+  /* --- brick: unpriced, and a floor about to break. Reserved. --- */
+  --alert:#a03418;
+  --alert-soft:#f7e0d6;
+  --alert-line:#f0cec2;
 
-  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;
+  /* --- terracotta: the accent, and nothing that means money --- */
+  --accent:#c67139;
+  --accent-deep:#8c491a;
+  --accent-700:#643312;
+  --accent-soft:#fff2eb;
+  --accent-line:#ffc6a5;
+
+  /* The register band stays near-black so the number owns the screen. */
+  --band:#2e2b25;
+  --band-2:#4a463d;
+
+  --sans:"Figtree",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+  /* Caprasimo has one weight. Never ask for a bold — the browser will synthesise
+     a smeared one rather than tell you it cannot. */
+  --display:"Caprasimo",Georgia,"Times New Roman",serif;
   --mono:ui-monospace,SFMono-Regular,Consolas,"Cascadia Mono",monospace;
 
-  --r-sm:8px; --r-md:11px; --r-lg:15px; --r-pill:999px;
-  --sh-1:0 1px 2px rgba(20,20,15,.05);
-  --sh-2:0 1px 3px rgba(20,20,15,.06), 0 6px 16px rgba(20,20,15,.05);
-  --sh-band:0 2px 10px rgba(20,20,15,.18);
+  /* Organic is round: 20px on cards, 999px on anything pill-shaped. */
+  --r-sm:10px; --r-md:16px; --r-lg:20px; --r-xl:24px; --r-pill:999px;
+
+  /* Shadows are warm rather than grey, so they read as shade on paper. */
+  --sh-1:0 1px 2px rgba(46,43,37,.05);
+  --sh-2:0 1px 3px rgba(46,43,37,.06), 0 6px 16px rgba(46,43,37,.06);
+  --sh-band:0 2px 14px rgba(46,43,37,.22);
 
   --tabbar-h:64px;
 }
+
+/* Every screen title and every headline figure. One weight, always 400 — see
+   the note on --display above. */
+.dsp{font-family:var(--display);font-weight:400;letter-spacing:0}
+
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{
@@ -65,10 +109,12 @@ body{
 
 .screen-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px}
 .screen-head .eb{font-size:10.5px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--mut)}
-.screen-head h1{margin:5px 0 0;font-size:26px;font-weight:680;letter-spacing:-.025em;text-wrap:balance}
+.screen-head h1{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:27px;
+                 line-height:1.1;letter-spacing:-.01em;text-wrap:balance}
 .screen-head .aside{text-align:right;flex:none}
 .screen-head .aside .k{font-size:10px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--mut)}
-.screen-head .aside .v{font-size:21px;font-weight:680;letter-spacing:-.02em;margin-top:2px}
+.screen-head .aside .v{font-family:var(--display);font-weight:400;font-size:22px;
+                        letter-spacing:0;margin-top:2px}
 
 h2{
   font-size:10.5px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--mut);
@@ -94,8 +140,9 @@ h2 .count{font-weight:600;letter-spacing:.06em;color:var(--line2)}
   /* A third of a phone width has to hold a negative figure with cents
      ("-$52.50"). At a fixed 23px that ellipsizes into "-$52..." — a truncated
      amount is worse than no amount, so the size gives way before the digits do. */
-  font-size:clamp(17px,5.1vw,23px);
-  font-weight:680;letter-spacing:-.03em;margin-top:5px;
+  font-family:var(--display);font-weight:400;
+  font-size:clamp(18px,5.3vw,25px);
+  letter-spacing:0;margin-top:5px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 .stat .s{font-size:11.5px;color:var(--mut);margin-top:2px}
@@ -114,36 +161,38 @@ button,input,select,textarea{font-family:inherit;font-size:16px;color:var(--ink)
 
 .btn{
   display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1px;
-  width:100%;border:0;border-radius:var(--r-md);background:var(--ink);color:#fff;
-  font-size:16px;font-weight:650;letter-spacing:-.01em;padding:16px 18px;cursor:pointer;
+  width:100%;border:0;border-radius:var(--r-pill);background:var(--accent);color:#fff;
+  font-size:16px;font-weight:700;letter-spacing:-.01em;padding:16px 18px;cursor:pointer;
+  /* 44px is the floor everywhere: this is used one-handed with a buyer waiting. */
+  min-height:52px;
   box-shadow:var(--sh-1);transition:background .12s ease,transform .06s ease;
 }
 .btn:active{transform:translateY(1px)}
-.btn:hover{background:#2A2A22}
-.btn:disabled{background:#E3E3DC;color:#A5A59B;cursor:not-allowed;box-shadow:none}
+.btn:hover{background:var(--accent-deep)}
+.btn:disabled{background:var(--n200);color:var(--n500);cursor:not-allowed;box-shadow:none}
 .btn .sub{font-size:12px;font-weight:500;opacity:.82;letter-spacing:0}
 .btn.money{background:var(--money)}
-.btn.money:hover{background:#0A5C3B}
+.btn.money:hover{background:var(--money-deep)}
 .btn.alert{background:var(--alert)}
-.btn.alert:hover{background:#982C13}
+.btn.alert:hover{background:#7d2711}
 .btn.ghost{background:var(--paper);border:1px solid var(--line2);color:var(--ink2);box-shadow:none}
-.btn.ghost:hover{background:var(--raised)}
-.btn.sm{padding:11px 14px;font-size:14.5px;font-weight:600}
+.btn.ghost:hover{background:var(--raised);border-color:var(--accent-line)}
+.btn.sm{padding:12px 16px;font-size:14.5px;font-weight:700;min-height:44px}
 
-.seg{display:grid;grid-auto-flow:column;gap:4px;background:var(--line);padding:4px;
-     border-radius:var(--r-md);margin-bottom:14px}
-.seg button{border:0;background:transparent;color:var(--ink2);font-size:14px;font-weight:600;
-            padding:10px 8px;border-radius:calc(var(--r-md) - 4px);cursor:pointer}
+.seg{display:grid;grid-auto-flow:column;gap:5px;background:var(--n200);padding:4px;
+     border-radius:var(--r-pill);margin-bottom:14px}
+.seg button{border:0;background:transparent;color:var(--ink2);font-size:14px;font-weight:700;
+            padding:11px 8px;border-radius:var(--r-pill);cursor:pointer;min-height:44px}
 .seg button[aria-pressed="true"]{background:var(--paper);color:var(--ink);box-shadow:var(--sh-1)}
 
 label{display:block;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
       color:var(--mut);margin-bottom:6px}
 input[type=text],input[type=tel],input[type=search],select,textarea{
-  width:100%;padding:13px 14px;border:1px solid var(--line2);border-radius:var(--r-sm);
-  background:var(--raised);
+  width:100%;padding:14px 15px;border:1px solid var(--line2);border-radius:var(--r-md);
+  background:var(--bg);min-height:48px;
 }
 input:focus,select:focus,textarea:focus{background:var(--paper)}
-input::placeholder{color:#AEAEA4}
+input::placeholder{color:var(--n500)}
 .field+.field,.grid2+.field,.field+.grid2,.grid2+.grid2{margin-top:13px}
 /* Two fields side by side, with their inputs on the same line.
    A label that wraps ("Floor (least you would take)" at half a phone width) is
@@ -537,7 +586,7 @@ textarea#s-name.from-read{background:var(--money-soft);border-color:var(--money-
    the only time the order is ambiguous. */
 .rd .star{flex:none;position:relative;background:none;border:0;cursor:pointer;width:auto;
           padding:4px 3px;font-size:19px;line-height:1;color:var(--line2)}
-.rd .star.on{color:#C8901B}
+.rd .star.on{color:var(--accent)}
 .rd .star .ord{position:absolute;right:-2px;bottom:1px;font-size:9px;font-weight:800;
                font-family:var(--mono);color:var(--ink);background:var(--paper);
                border:1px solid var(--line2);border-radius:999px;
@@ -550,15 +599,16 @@ textarea#s-name.from-read{background:var(--money-soft);border-color:var(--money-
    card row, and the count under the name says which cards that money covers.
    A sold card is in neither: its money is realized and shows on the sales
    side, not here. */
-.grp{display:flex;align-items:center;gap:12px;padding:14px 15px;width:100%;
+.grp{display:flex;align-items:center;gap:13px;padding:14px 15px;width:100%;min-height:44px;
      background:none;border:0;text-align:left;cursor:pointer;font:inherit;color:inherit}
 .grp+.grp{border-top:1px solid var(--line)}
 .grp:active{background:var(--raised)}
 .grp .mid{flex:1;min-width:0}
-.grp .t{display:block;font-size:15px;font-weight:600;
+.grp .t{display:block;font-family:var(--display);font-weight:400;font-size:17px;
         white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .grp .s{display:block;font-size:12.5px;color:var(--mut);margin-top:4px}
-.grp .amt{flex:none;font-size:16px;font-weight:680;color:var(--money);text-align:right}
+.grp .amt{flex:none;font-family:var(--display);font-weight:400;font-size:18px;
+           color:var(--money);text-align:right}
 
 /* The two numbers at the top of one group. Same register as the day totals. */
 .tot{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--line);
@@ -604,12 +654,12 @@ textarea#s-name.from-read{background:var(--money-soft);border-color:var(--money-
    so the spacer clipped it to 151px — a player's name, truncated, to line up
    a control that is not there. The name matters more than the column. */
 
-.rd.assigned{background:#0B3B28;color:#fff;padding-top:11px;padding-bottom:11px}
+.rd.assigned{background:var(--money-deep);color:#fff;padding-top:11px;padding-bottom:11px}
 .rd.assigned .mark{flex:none;font-family:var(--mono);font-size:15px;font-weight:800;
-                   color:#8FD4B2;width:24px;text-align:center}
+                   color:var(--money-line);width:24px;text-align:center}
 .rd.assigned .txt{color:#fff;font-weight:700}
 .rd.assigned .tag{flex:none;font-size:9px;font-weight:800;letter-spacing:.12em;
-                  text-transform:uppercase;color:#0B3B28;background:#8FD4B2;
+                  text-transform:uppercase;color:var(--money-deep);background:var(--money-line);
                   border-radius:var(--r-pill);padding:4px 9px}
 .rd.assigned .pen{color:rgba(255,255,255,.72)}
 .rd.assigned .pen:hover{color:#fff}
@@ -622,20 +672,27 @@ textarea#s-name.from-read{background:var(--money-soft);border-color:var(--money-
 /* ---- Prep: the night before, as three steps -------------------------------
    The work before a show is a short, finite checklist, so the screen is one.
    Every count here is derived on render — nothing about readiness is stored. */
-.readybar{height:8px;border-radius:999px;background:var(--line);overflow:hidden;
+.readybar{height:9px;border-radius:999px;background:var(--n200);overflow:hidden;
           margin:0 0 16px}
 .readybar .fill{height:100%;background:var(--money);border-radius:999px;
                 transition:width .25s ease}
 
 .step{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-lg);
       box-shadow:var(--sh-1);margin-bottom:11px;overflow:hidden}
+/* The step being worked is terracotta-tinted, so the eye lands on it first.
+   Driven by a class from the component, not :first-of-type — once step 1 is
+   done the tint has to MOVE, and a highlight stuck on a finished step points
+   at the wrong thing. */
+.step.active{background:var(--accent-soft);border-color:var(--accent-line)}
+.step.active .n{background:var(--accent)}
+.step.active > .sbody{border-top-color:var(--accent-line)}
 .step>.shead{display:flex;align-items:center;gap:11px;padding:13px 14px}
-.step .n{flex:none;width:26px;height:26px;border-radius:999px;background:var(--ink);
+.step .n{flex:none;width:30px;height:30px;border-radius:999px;background:var(--accent);
          color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;
          justify-content:center;line-height:1}
 .step.settled .n{background:var(--money)}
 .step>.shead .grow{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
-.step .t{font-size:15.5px;font-weight:650;letter-spacing:-.01em}
+.step .t{font-family:var(--display);font-weight:400;font-size:17px;letter-spacing:0}
 .step .c{font-size:12.5px;font-weight:600}
 .step .c.alert{color:var(--alert)}
 .step .c.money{color:var(--money)}
@@ -662,22 +719,22 @@ textarea#s-name.from-read{background:var(--money-soft);border-color:var(--money-
 /* The group picker. A group is the physical unit that gets carried, which is
    why the case is packed by group and never card by card. */
 .packlist{display:flex;flex-direction:column;gap:8px}
-.packrow{display:flex;align-items:center;gap:10px;width:100%;padding:11px 12px;
-         background:var(--paper);border:1.5px solid var(--line2);
+.packrow{display:flex;align-items:center;gap:11px;width:100%;padding:12px 13px;
+         background:var(--paper);border:1.5px solid var(--line);
          border-radius:var(--r-md);cursor:pointer;font:inherit;text-align:left;
          min-height:44px}
-.packrow.on{background:var(--money-soft);border-color:var(--money-line)}
+.packrow.on{background:var(--money-soft);border-color:var(--money-edge)}
 .packrow .tick{flex:none;width:24px;height:24px;border-radius:6px;
                border:1.5px solid var(--line2);background:var(--paper);
                display:flex;align-items:center;justify-content:center;
                font-size:13px;font-weight:800;color:transparent;line-height:1}
 .packrow.on .tick{background:var(--money);border-color:var(--money);color:#fff}
 .packrow .grow{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
-.packrow .nm{font-size:14.5px;font-weight:650;
+.packrow .nm{font-size:15px;font-weight:700;
              white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .packrow .sub{font-size:11.5px;color:var(--mut)}
-.packrow .val{flex:none;font-family:var(--mono);font-size:14px;font-weight:700}
-.packrow.on .val{color:var(--money)}
+.packrow .val{flex:none;font-family:var(--display);font-weight:400;font-size:16px}
+.packrow.on .val{color:var(--money-deep)}
 /* Its own line, not tacked onto the subline — an earlier draft put it there and
    it clipped behind the value on a narrow phone. */
 .packrow .where{flex-basis:100%;font-size:10.5px;font-weight:700;letter-spacing:.06em;
@@ -686,15 +743,15 @@ textarea#s-name.from-read{background:var(--money-soft);border-color:var(--money-
 .packlist .packrow{flex-wrap:wrap}
 
 .incar{background:var(--money-soft);border:1px solid var(--money-line);
-       border-radius:var(--r-lg);padding:15px 16px;margin:15px 0 13px}
-.incar h2{margin:0 0 11px;font-size:15px;font-weight:680;letter-spacing:-.015em;
-          color:var(--money)}
+       border-radius:var(--r-xl);padding:16px 17px;margin:15px 0 13px}
+.incar h2{margin:0 0 11px;font-size:10.5px;font-weight:700;letter-spacing:.15em;
+          text-transform:uppercase;color:var(--money)}
 .incar .none{margin:0;font-size:13px;color:var(--ink2);line-height:1.45}
 .incar .figs{display:flex;gap:26px;margin-bottom:11px}
 .incar .figs .k{font-size:9px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;
                 color:var(--money);opacity:.75}
-.incar .figs .v{font-family:var(--mono);font-size:24px;font-weight:700;margin-top:2px}
-.incar .figs .v.money{color:var(--money)}
+.incar .figs .v{font-family:var(--display);font-weight:400;font-size:28px;margin-top:4px}
+.incar .figs .v.money{color:var(--money-deep)}
 .incar .names{display:flex;flex-wrap:wrap;gap:6px}
 .incar .chip{font-size:11.5px;font-weight:650;background:var(--paper);
              border:1px solid var(--money-line);border-radius:var(--r-pill);padding:4px 10px}
@@ -704,11 +761,11 @@ textarea#s-name.from-read{background:var(--money-soft);border-color:var(--money-
 /* ---- Show: what is actually in front of you -------------------------------
    "In case" has to mean the cards on the table, not stock left at home. */
 .ontable{background:var(--money-soft);border:1px solid var(--money-line);
-         border-radius:var(--r-md);padding:11px 12px;margin-bottom:12px}
+         border-radius:var(--r-lg);padding:12px 13px;margin-bottom:12px}
 .ontable .top{display:flex;align-items:baseline;gap:10px;margin-bottom:8px}
 .ontable h2{margin:0;flex:1;font-size:10px;font-weight:700;letter-spacing:.13em;
             text-transform:uppercase;color:var(--money);opacity:.85}
-.ontable .worth{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--money)}
+.ontable .worth{font-family:var(--display);font-weight:400;font-size:19px;color:var(--money-deep)}
 .ontable .chips{display:flex;flex-wrap:wrap;gap:6px}
 .ontable .chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;
                font-weight:650;background:var(--paper);border:1px solid var(--money-line);
@@ -727,12 +784,12 @@ textarea#s-name.from-read{background:var(--money-soft);border-color:var(--money-
           color:var(--ink2);min-height:44px;display:inline-flex;align-items:center}
 .backlink:hover{color:var(--ink)}
 
-.grp .cnt{flex:none;min-width:34px;height:34px;padding:0 7px;border-radius:9px;
-          background:var(--bg);border:1px solid var(--line2);color:var(--ink2);
+.grp .cnt{flex:none;min-width:36px;height:36px;padding:0 7px;border-radius:11px;
+          background:var(--bg);border:1px solid var(--line);color:var(--ink2);
           font-family:var(--mono);font-size:13px;font-weight:700;
           display:flex;align-items:center;justify-content:center}
-.grp .cnt.on{background:var(--money-soft);border-color:var(--money-line);color:var(--money)}
-.grp.packed{border-color:var(--money-line)}
+.grp .cnt.on{background:var(--money-soft);border-color:var(--money-edge);color:var(--money)}
+.grp.packed{border-color:var(--money-edge)}
 
 /* Both states are pills so each keeps its own box. Put in the subline as bare
    text they clipped behind the value on a narrow phone, and a state you cannot

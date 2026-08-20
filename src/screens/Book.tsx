@@ -77,54 +77,47 @@ function Collection({
 }) {
   const { db } = useStore();
   /*
-   * GROUPS LEAD. A group is what gets carried, packed and totalled, so it is
-   * what the Book opens on. The Cards tab stays because it is the only place
-   * that searches the whole book by name or number — narrowing to one group
-   * cannot answer "where is 455".
+   * THE BOOK IS GROUPS. A group is what gets carried, packed and totalled, so
+   * it is the only thing this screen lists.
+   *
+   * SEARCH IS THE EXCEPTION, and it is not a second view — it is the answer to
+   * the one question groups cannot answer: "where is 455". You cannot drill
+   * into a group to find a card whose group you do not know, so typing here
+   * searches every card in the book and the list becomes those cards until the
+   * box is cleared.
    */
-  const [tab, setTab] = useState<'cards' | 'groups'>('groups');
-  const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
 
   // Deleted cards stay in db.cards as tombstones so the sync merge can see
   // them. Everything below counts and lists only the live ones — lib/cards.ts.
   const cards = useMemo(() => liveCards(db), [db]);
 
-  const counts = useMemo(() => ({
-    all: cards.length,
-    unpriced: cards.filter((c) => c.status === 'unpriced').length,
-    available: cards.filter((c) => c.status === 'available').length,
-    sold: cards.filter((c) => c.status === 'sold').length,
-  }), [cards]);
+  const q = query.trim().toLowerCase();
+  const searching = q !== '';
 
-  const shown = useMemo(() => {
-    const q = query.trim().toLowerCase();
+  const hits = useMemo(() => {
+    if (q === '') return [];
     return cards
-      .filter((c) => (filter === 'all' ? true : c.status === filter))
-      .filter((c) => q === '' || c.name.toLowerCase().includes(q) || c.number.includes(q))
+      .filter((c) => c.name.toLowerCase().includes(q) || c.number.includes(q))
       .slice()
       .reverse();
-  }, [cards, filter, query]);
+  }, [cards, q]);
 
   return (
     <>
       <header className="screen-head">
         <div>
           <div className="eb">Book</div>
-          <h1>{tab === 'groups' ? 'Your groups' : 'Your collection'}</h1>
+          <h1>Your groups</h1>
         </div>
-        {/* On the groups tab the question is what the case is WORTH, since that
-            is what every row below adds up to. On the cards tab it stays a
-            count, which is what it has always been. */}
+        {/* What the case is WORTH, since that is what every row below adds up to. */}
         <div className="aside">
           <div className="k">In the case</div>
-          <div className="v">
-            {tab === 'groups' ? formatCents(totalInCase(db)) : counts.available}
-          </div>
+          <div className="v">{formatCents(totalInCase(db))}</div>
         </div>
       </header>
 
-      {counts.all === 0 ? (
+      {cards.length === 0 ? (
         <div className="list">
           <div className="empty">
             <div className="t">Nothing in the book yet</div>
@@ -137,49 +130,40 @@ function Collection({
             </button>
           </div>
         </div>
-      ) : tab === 'groups' ? (
-        <>
-          <BookTabs tab={tab} setTab={setTab} />
-          <GroupList onOpen={onOpenGroup} onNewGroup={onNewGroup} />
-        </>
       ) : (
         <>
-          <BookTabs tab={tab} setTab={setTab} />
-
-          <div className="seg" role="group" aria-label="Filter by state" style={{ marginTop: 11 }}>
-            {(['all', 'unpriced', 'available', 'sold'] as Filter[]).map((f) => (
-              <button key={f} aria-pressed={filter === f} onClick={() => setFilter(f)}>
-                {f === 'all' ? 'All' : f === 'unpriced' ? 'Unpriced' : f === 'available' ? 'In case' : 'Sold'}
-                {' '}{counts[f]}
-              </button>
-            ))}
+          {/*
+            * Always present, never behind a tab. A dealer looking for one card
+            * does not know which group it is in — that is the whole reason they
+            * are looking — so the way to find it cannot be inside a group.
+            */}
+          <div className="field">
+            <input type="search" value={query} placeholder="Find a card by name or number"
+                   aria-label="Find a card in the book"
+                   onChange={(e) => setQuery(e.target.value)} />
           </div>
 
-          {/* The group filter used to be a dropdown here. It is a tab now — a
-              group is something you open and read totals off, not a way to
-              narrow this list, and two filters stacked on one screen was one
-              too many. */}
-
-          {counts.all > 6 && (
-            <div className="field" style={{ marginTop: 11 }}>
-              <input type="search" value={query} placeholder="Search a name or number"
-                     aria-label="Search the book" onChange={(e) => setQuery(e.target.value)} />
-            </div>
-          )}
-
-          <h2>
-            <span>Cards</span>
-            <span className="count">{shown.length}</span>
-          </h2>
-
-          <div className="list">
-            {shown.length === 0 ? (
-              <div className="empty">
-                <div className="t">Nothing here</div>
-                <div className="s">No card matches this filter.</div>
+          {searching ? (
+            <>
+              <h2>
+                <span>Matches</span>
+                <span className="count">{hits.length}</span>
+              </h2>
+              <div className="list">
+                {hits.length === 0 ? (
+                  <div className="empty">
+                    <div className="t">No card matches “{query.trim()}”</div>
+                    <div className="s">Try part of a name, or the number off the sticker.</div>
+                  </div>
+                ) : hits.map((c) => <CardRow key={c.id} card={c} onEdit={onEdit} />)}
               </div>
-            ) : shown.map((c) => <CardRow key={c.id} card={c} onEdit={onEdit} />)}
-          </div>
+              <button className="btn ghost sm" style={{ marginTop: 12 }} onClick={() => setQuery('')}>
+                Back to groups
+              </button>
+            </>
+          ) : (
+            <GroupList onOpen={onOpenGroup} onNewGroup={onNewGroup} />
+          )}
         </>
       )}
     </>
@@ -187,16 +171,6 @@ function Collection({
 }
 
 /* -------------------------------------------------------------------------- */
-
-/** Cards or groups. Two ways to read the same collection. */
-function BookTabs({ tab, setTab }: { tab: 'cards' | 'groups'; setTab: (t: 'cards' | 'groups') => void }) {
-  return (
-    <div className="seg" role="group" aria-label="Cards or groups">
-      <button aria-pressed={tab === 'cards'} onClick={() => setTab('cards')}>Cards</button>
-      <button aria-pressed={tab === 'groups'} onClick={() => setTab('groups')}>Groups</button>
-    </div>
-  );
-}
 
 /**
  * One card, as a row. Shared by the collection and by a group's card list so the

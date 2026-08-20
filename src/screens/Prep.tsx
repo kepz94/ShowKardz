@@ -53,6 +53,14 @@ export function Prep({ go }: { go: (r: Route, cardId?: string) => void }) {
 
   const pct = cards.length === 0 ? 0 : Math.round((priced / cards.length) * 100);
 
+  /*
+   * The step you are actually on: the first one with work left, and step 3 once
+   * the first two are clear. It is computed rather than styled as "the first
+   * card", because once step 1 is done the highlight has to MOVE — a tint stuck
+   * on a finished step points at the wrong thing.
+   */
+  const activeStep = unpriced.length > 0 ? 1 : needFloors.length > 0 ? 2 : 3;
+
   return (
     <>
       <header className="screen-head">
@@ -83,7 +91,7 @@ export function Prep({ go }: { go: (r: Route, cardId?: string) => void }) {
           <Step n={1} title="Price the unpriced"
                 count={unpriced.length}
                 done="Everything has a price"
-                tone="alert">
+                tone="alert" active={activeStep === 1}>
             <Queue cards={unpriced} expanded={showAllUnpriced}
                    onExpand={() => setShowAllUnpriced(true)}
                    onOpen={(id) => go('book', id)}
@@ -94,7 +102,7 @@ export function Prep({ go }: { go: (r: Route, cardId?: string) => void }) {
           <Step n={2} title="Set floors"
                 count={needFloors.length}
                 done="Every priced card has a floor"
-                tone="mut">
+                tone="mut" active={activeStep === 2}>
             <p className="stepnote">
               A floor is the least you would take. Optional — skip any you do not want one on.
             </p>
@@ -110,6 +118,7 @@ export function Prep({ go }: { go: (r: Route, cardId?: string) => void }) {
                 countLabel="packed"
                 done="Nothing packed yet"
                 tone="money"
+                active={activeStep === 3}
                 alwaysOpen>
             {rows.length === 0 ? (
               <p className="stepnote">
@@ -195,15 +204,17 @@ export function Prep({ go }: { go: (r: Route, cardId?: string) => void }) {
  * because a finished step should take up the space of a tick and no more.
  */
 function Step({
-  n, title, count, done, tone, countLabel, alwaysOpen, children,
+  n, title, count, done, tone, countLabel, alwaysOpen, active, children,
 }: {
   n: number; title: string; count: number; done: string;
   tone: 'alert' | 'money' | 'mut'; countLabel?: string; alwaysOpen?: boolean;
+  /** The step being worked right now — tinted so the eye lands on it first. */
+  active?: boolean;
   children: React.ReactNode;
 }) {
   const settled = count === 0 && !alwaysOpen;
   return (
-    <section className={`step${settled ? ' settled' : ''}`}>
+    <section className={`step${settled ? ' settled' : ''}${active && !settled ? ' active' : ''}`}>
       <div className="shead">
         <span className="n" aria-hidden>{settled ? '✓' : n}</span>
         <span className="grow">
