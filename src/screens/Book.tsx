@@ -20,9 +20,18 @@ type Filter = 'all' | 'unpriced' | 'available' | 'sold';
  * Scanning deliberately happens elsewhere: that screen is for getting cards in,
  * this one is for making sense of them.
  */
-export function Book({ go }: { go: (r: Route) => void }) {
+export function Book({ go, openCardId }: {
+  go: (r: Route, cardId?: string) => void;
+  /**
+   * A card to open on arrival, carried in the URL by Prep. It is read as the
+   * INITIAL editing state rather than watched, so closing the editor does not
+   * fight the hash that opened it — and because it lives in the address, a
+   * process kill mid-edit reopens the same card instead of the group list.
+   */
+  openCardId?: string;
+}) {
   const { db } = useStore();
-  const [editing, setEditing] = useState<string | null>(null);
+  const [editing, setEditing] = useState<string | null>(openCardId ?? null);
   const [declaring, setDeclaring] = useState(false);
   const [renaming, setRenaming] = useState<Stack | null>(null);
   const [openGroup, setOpenGroup] = useState<string | null>(null);

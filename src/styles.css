@@ -618,3 +618,102 @@ textarea#s-name.from-read{background:var(--money-soft);border-color:var(--money-
                    font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
                    border-radius:var(--r-pill);padding:6px 11px;cursor:pointer;width:auto}
 .rd.assigned .undo:hover{background:rgba(255,255,255,.2)}
+
+/* ---- Prep: the night before, as three steps -------------------------------
+   The work before a show is a short, finite checklist, so the screen is one.
+   Every count here is derived on render — nothing about readiness is stored. */
+.readybar{height:8px;border-radius:999px;background:var(--line);overflow:hidden;
+          margin:0 0 16px}
+.readybar .fill{height:100%;background:var(--money);border-radius:999px;
+                transition:width .25s ease}
+
+.step{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-lg);
+      box-shadow:var(--sh-1);margin-bottom:11px;overflow:hidden}
+.step>.shead{display:flex;align-items:center;gap:11px;padding:13px 14px}
+.step .n{flex:none;width:26px;height:26px;border-radius:999px;background:var(--ink);
+         color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;
+         justify-content:center;line-height:1}
+.step.settled .n{background:var(--money)}
+.step>.shead .grow{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.step .t{font-size:15.5px;font-weight:650;letter-spacing:-.01em}
+.step .c{font-size:12.5px;font-weight:600}
+.step .c.alert{color:var(--alert)}
+.step .c.money{color:var(--money)}
+.step .c.mut{color:var(--mut)}
+.step>.sbody{padding:0 14px 14px;border-top:1px solid var(--line);padding-top:12px}
+.stepnote{margin:0 0 10px;font-size:12.5px;color:var(--mut);line-height:1.45}
+
+.queue{display:flex;flex-direction:column;gap:1px;background:var(--line);
+       border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden}
+.qrow{display:flex;align-items:center;gap:10px;width:100%;padding:11px 12px;
+      background:var(--paper);border:0;cursor:pointer;font:inherit;text-align:left;
+      min-height:44px}
+.qrow:hover{background:var(--raised)}
+.qrow .num{flex:none;font-family:var(--mono);font-size:12.5px;font-weight:700;
+           color:var(--ink2);background:var(--bg);border:1px solid var(--line2);
+           border-radius:6px;padding:3px 7px}
+.qrow .nm{flex:1;min-width:0;font-size:14px;font-weight:600;
+          white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qrow .need{flex:none;font-size:11px;font-weight:700;color:var(--alert)}
+.qrow .ask{flex:none;font-family:var(--mono);font-size:13px;font-weight:700;color:var(--money)}
+.queue .more{width:100%;padding:11px;background:var(--raised);border:0;cursor:pointer;
+             font:inherit;font-size:12.5px;font-weight:650;color:var(--ink2);min-height:44px}
+
+/* The group picker. A group is the physical unit that gets carried, which is
+   why the case is packed by group and never card by card. */
+.packlist{display:flex;flex-direction:column;gap:8px}
+.packrow{display:flex;align-items:center;gap:10px;width:100%;padding:11px 12px;
+         background:var(--paper);border:1.5px solid var(--line2);
+         border-radius:var(--r-md);cursor:pointer;font:inherit;text-align:left;
+         min-height:44px}
+.packrow.on{background:var(--money-soft);border-color:var(--money-line)}
+.packrow .tick{flex:none;width:24px;height:24px;border-radius:6px;
+               border:1.5px solid var(--line2);background:var(--paper);
+               display:flex;align-items:center;justify-content:center;
+               font-size:13px;font-weight:800;color:transparent;line-height:1}
+.packrow.on .tick{background:var(--money);border-color:var(--money);color:#fff}
+.packrow .grow{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.packrow .nm{font-size:14.5px;font-weight:650;
+             white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.packrow .sub{font-size:11.5px;color:var(--mut)}
+.packrow .val{flex:none;font-family:var(--mono);font-size:14px;font-weight:700}
+.packrow.on .val{color:var(--money)}
+/* Its own line, not tacked onto the subline — an earlier draft put it there and
+   it clipped behind the value on a narrow phone. */
+.packrow .where{flex-basis:100%;font-size:10.5px;font-weight:700;letter-spacing:.06em;
+                text-transform:uppercase;color:var(--mut);order:9}
+.packrow.on .where{color:var(--money)}
+.packlist .packrow{flex-wrap:wrap}
+
+.incar{background:var(--money-soft);border:1px solid var(--money-line);
+       border-radius:var(--r-lg);padding:15px 16px;margin:15px 0 13px}
+.incar h2{margin:0 0 11px;font-size:15px;font-weight:680;letter-spacing:-.015em;
+          color:var(--money)}
+.incar .none{margin:0;font-size:13px;color:var(--ink2);line-height:1.45}
+.incar .figs{display:flex;gap:26px;margin-bottom:11px}
+.incar .figs .k{font-size:9px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;
+                color:var(--money);opacity:.75}
+.incar .figs .v{font-family:var(--mono);font-size:24px;font-weight:700;margin-top:2px}
+.incar .figs .v.money{color:var(--money)}
+.incar .names{display:flex;flex-wrap:wrap;gap:6px}
+.incar .chip{font-size:11.5px;font-weight:650;background:var(--paper);
+             border:1px solid var(--money-line);border-radius:var(--r-pill);padding:4px 10px}
+.incar .warn{margin:11px 0 0;font-size:12.5px;line-height:1.45;color:var(--alert)}
+.btn.wide{width:100%;margin-bottom:8px}
+
+/* ---- Show: what is actually in front of you -------------------------------
+   "In case" has to mean the cards on the table, not stock left at home. */
+.ontable{background:var(--money-soft);border:1px solid var(--money-line);
+         border-radius:var(--r-md);padding:11px 12px;margin-bottom:12px}
+.ontable .top{display:flex;align-items:baseline;gap:10px;margin-bottom:8px}
+.ontable h2{margin:0;flex:1;font-size:10px;font-weight:700;letter-spacing:.13em;
+            text-transform:uppercase;color:var(--money);opacity:.85}
+.ontable .worth{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--money)}
+.ontable .chips{display:flex;flex-wrap:wrap;gap:6px}
+.ontable .chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;
+               font-weight:650;background:var(--paper);border:1px solid var(--money-line);
+               border-radius:var(--r-pill);padding:5px 10px;color:var(--ink)}
+.ontable .chip b{font-family:var(--mono);font-size:11px;color:var(--money)}
+.ontable .chip.change{border-style:dashed;border-color:var(--line2);color:var(--ink2);
+                      cursor:pointer;font:inherit;font-size:11.5px;font-weight:650;
+                      padding:5px 10px}

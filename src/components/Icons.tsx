@@ -1,5 +1,5 @@
 /**
- * Tab icons, inline. Four small paths do not justify an icon dependency, and a
+ * Tab icons, inline. A handful of small paths do not justify an icon dependency, and a
  * package here would be one more thing to keep alive for the life of the app.
  */
 const base = {
@@ -7,6 +7,16 @@ const base = {
   strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const,
   'aria-hidden': true,
 };
+
+/** A checklist — the short, finite job the night before a show. */
+export const PrepIcon = () => (
+  <svg {...base}>
+    <path d="M4 6.5 5.6 8 8.5 5" />
+    <path d="M4 12.5 5.6 14 8.5 11" />
+    <path d="M4 18.5 5.6 20 8.5 17" />
+    <path d="M12 6.5h8M12 12.5h8M12 18.5h5" />
+  </svg>
+);
 
 /** A viewfinder over a card — getting one in. */
 export const ScanIcon = () => (

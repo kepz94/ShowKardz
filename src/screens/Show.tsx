@@ -1,4 +1,6 @@
 import { liveCards } from '../lib/cards';
+import { groupRows } from '../lib/groups';
+import { isPacked, packedCards, packedSummary } from '../lib/packing';
 import { useState } from 'react';
 import type { Route } from '../App';
 import { useStore, newId, nowIso } from '../lib/store';
@@ -20,6 +22,11 @@ export function Show({ go }: { go: (r: Route) => void }) {
   const [done, setDone] = useState<{ agreedCents: number; count: number } | null>(null);
 
   const sellable = liveCards(db).filter((c) => c.status === 'available');
+
+  /* What was actually loaded into the case tonight. Empty = Prep was never used. */
+  const packed = packedSummary(db);
+  const rows = groupRows(db);
+  const onTable = packedCards(db).filter((c) => c.status === 'available');
   const cartCards = cart
     .map((id) => liveCards(db).find((c) => c.id === id))
     .filter((c): c is Card => c !== undefined);
@@ -108,9 +115,35 @@ export function Show({ go }: { go: (r: Route) => void }) {
         </div>
         <div className="aside">
           <div className="k">In case</div>
-          <div className="v">{sellable.length}</div>
+          {/*
+            * PACKED, not the whole book. Standing at a table, "in case" has to
+            * mean the cards actually in front of you — counting stock left at
+            * home makes the one number a dealer glances at a lie. Nothing
+            * packed falls back to everything sellable, because a dealer who
+            * never used Prep has not said otherwise.
+            */}
+          <div className="v">{onTable.length > 0 ? onTable.length : sellable.length}</div>
         </div>
       </header>
+
+      {packed.cardCount > 0 && (
+        <section className="ontable" aria-labelledby="ontable-t">
+          <div className="top">
+            <h2 id="ontable-t">On the table today</h2>
+            <span className="worth">{formatCents(packed.valueCents)}</span>
+          </div>
+          <div className="chips">
+            {rows
+              .filter((r) => isPacked(db.packedStackIds, r.id))
+              .map((r) => (
+                <span className="chip" key={r.id}>
+                  {r.name}<b>{r.cardCount}</b>
+                </span>
+              ))}
+            <button className="chip change" onClick={() => go('prep')}>Change in Prep</button>
+          </div>
+        </section>
+      )}
 
       <div className="band">
         <div className="k">Sticker number</div>
