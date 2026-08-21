@@ -1,13 +1,38 @@
 /* Self-hosted so the service worker caches them — see the note in index.html.
    swap: the fallback shows immediately rather than leaving a blank heading.
-   Paths are relative so they resolve under the /ShowKardz/ Pages base. */
+   Paths are relative so they resolve under the /ShowKardz/ Pages base.
+
+   BOTH SUBSETS, EACH WITH ITS OWN unicode-range. Google splits every family
+   into `latin` (U+0000–00FF, i.e. the alphabet and digits) and `latin-ext`
+   (accented and Eastern European). An earlier version of this file shipped
+   ONLY latin-ext for both faces, so neither font contained a single letter of
+   the alphabet: every heading silently fell back to Georgia, and the handful of
+   characters that DO live in latin-ext rendered in the real face — which is why
+   odd letters mid-word looked like a different, bolder font.
+
+   The tell was the file size: a real latin subset is ~20 KB, and what shipped
+   was 2.3 KB. `document.fonts.check()` returned true throughout, because the
+   file loaded perfectly well — it just had the wrong glyphs in it. Checking
+   that a font LOADED is not checking that it is being USED. */
 @font-face{
   font-family:'Caprasimo';font-style:normal;font-weight:400;font-display:swap;
   src:url('../fonts/caprasimo-latin.woff2') format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face{
+  font-family:'Caprasimo';font-style:normal;font-weight:400;font-display:swap;
+  src:url('../fonts/caprasimo-latin-ext.woff2') format('woff2');
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
 }
 @font-face{
   font-family:'Figtree';font-style:normal;font-weight:300 900;font-display:swap;
   src:url('../fonts/figtree-latin.woff2') format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face{
+  font-family:'Figtree';font-style:normal;font-weight:300 900;font-display:swap;
+  src:url('../fonts/figtree-latin-ext.woff2') format('woff2');
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
 }
 
 /* ============================================================================
@@ -80,7 +105,45 @@
   --sh-band:0 2px 14px rgba(46,43,37,.22);
 
   --tabbar-h:64px;
+
+  /* ---- THE TYPE SCALE ------------------------------------------------------
+     Seven steps, no half-pixels. The file had grown to twenty-five sizes with
+     8.5/9.5/12.5/13.5/14.5 all in play — differences too small to read as
+     deliberate and too many to keep straight, which is what made the app look
+     assembled rather than designed. */
+  --t-xs:11px;    /* pills, tiny meta */
+  --t-sm:13px;    /* sublines, captions, help text */
+  --t-md:15px;    /* body, row titles, controls */
+  --t-lg:17px;    /* section emphasis */
+  --t-label:10px; /* the uppercase micro-labels, always with tracking */
+
+  /* ---- THE WEIGHTS ---------------------------------------------------------
+     THREE, and no more. There were nine — 300/400/500/550/600/650/680/700/800 —
+     and 600 against 650 against 680 is not a decision anyone can see, it just
+     makes text look randomly bold from one row to the next.
+
+     400 body · 600 emphasis · 700 uppercase labels and figures.
+     Caprasimo is 400 and only 400: it ships one weight, and asking for a bold
+     makes the browser synthesise a smeared one instead of saying it cannot. */
+  --w-body:400;
+  --w-med:600;
+  --w-bold:700;
+
+  /* ---- THE SPACING SCALE ---------------------------------------------------
+     A 4px base. Gaps of 1,2,3,4,5,6,8,9,10,11,12,13,16,26 were all in the file
+     at once, plus sixty-six inline marginTops in the TSX at 9/10/11/13/14 —
+     every one a decision made in isolation, which is exactly what uneven
+     spacing is. */
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:20px; --s6:24px; --s7:32px;
 }
+
+/* ---- spacing utilities ---------------------------------------------------
+   So a screen never reaches for an inline margin again. */
+.mt1{margin-top:var(--s1)} .mt2{margin-top:var(--s2)} .mt3{margin-top:var(--s3)}
+.mt4{margin-top:var(--s4)} .mt5{margin-top:var(--s5)} .mt6{margin-top:var(--s6)}
+.mb3{margin-bottom:var(--s3)}
+
+
 
 /* Every screen title and every headline figure. One weight, always 400 — see
    the note on --display above. */
@@ -107,8 +170,8 @@ body{
     calc(env(safe-area-inset-left) + 16px);
 }
 
-.screen-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px}
-.screen-head .eb{font-size:10.5px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--mut)}
+.screen-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px}
+.screen-head .eb{font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--mut)}
 .screen-head h1{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:27px;
                  line-height:1.1;letter-spacing:-.01em;text-wrap:balance}
 .screen-head .aside{text-align:right;flex:none}
@@ -117,35 +180,35 @@ body{
                         letter-spacing:0;margin-top:2px}
 
 h2{
-  font-size:10.5px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--mut);
-  margin:26px 0 10px;display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+  font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--mut);
+  margin:26px 0 10px;display:flex;align-items:baseline;justify-content:space-between;gap:12px;
 }
 h2 .count{font-weight:600;letter-spacing:.06em;color:var(--line2)}
-.lede{font-size:14px;color:var(--ink2);margin:0 0 14px}
+.lede{font-size:15px;color:var(--ink2);margin:0 0 14px}
 .muted{color:var(--mut)}
 .tnum{font-variant-numeric:tabular-nums}
 
 /* ---- surfaces ----------------------------------------------------------- */
 .card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-lg);
       box-shadow:var(--sh-1);padding:16px}
-.card+.card{margin-top:11px}
+.card+.card{margin-top:12px}
 
 /* ---- stat tiles --------------------------------------------------------- */
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .stats.two{grid-template-columns:repeat(2,1fr)}
 .stat{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-md);
-      padding:13px 13px 14px;box-shadow:var(--sh-1);min-width:0}
-.stat .k{font-size:9.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--mut)}
+      padding:12px 12px 14px;box-shadow:var(--sh-1);min-width:0}
+.stat .k{font-size:10px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--mut)}
 .stat .v{
   /* A third of a phone width has to hold a negative figure with cents
      ("-$52.50"). At a fixed 23px that ellipsizes into "-$52..." — a truncated
      amount is worse than no amount, so the size gives way before the digits do. */
   font-family:var(--display);font-weight:400;
   font-size:clamp(18px,5.3vw,25px);
-  letter-spacing:0;margin-top:5px;
+  letter-spacing:0;margin-top:4px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
-.stat .s{font-size:11.5px;color:var(--mut);margin-top:2px}
+.stat .s{font-size:11px;color:var(--mut);margin-top:2px}
 .stat.money{background:var(--money-soft);border-color:var(--money-line)}
 .stat.money .v{color:var(--money)}
 .stat.loss{background:var(--alert-soft);border-color:var(--alert-line)}
@@ -154,15 +217,15 @@ h2 .count{font-weight:600;letter-spacing:.06em;color:var(--line2)}
 /* ---- controls ----------------------------------------------------------- */
 /* 16px floor on every focusable control: iOS zooms below it and, in an
    installed PWA, the zoom sticks with no way back. */
-button,input,select,textarea{font-family:inherit;font-size:16px;color:var(--ink)}
+button,input,select,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
 :where(button,a,input,select,textarea):focus-visible{
   outline:2.5px solid var(--ink);outline-offset:2px;border-radius:var(--r-sm);
 }
 
 .btn{
-  display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1px;
+  display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2px;
   width:100%;border:0;border-radius:var(--r-pill);background:var(--accent);color:#fff;
-  font-size:16px;font-weight:700;letter-spacing:-.01em;padding:16px 18px;cursor:pointer;
+  font-size:15px;font-weight:700;letter-spacing:-.01em;padding:16px 16px;cursor:pointer;
   /* 44px is the floor everywhere: this is used one-handed with a buyer waiting. */
   min-height:52px;
   box-shadow:var(--sh-1);transition:background .12s ease,transform .06s ease;
@@ -170,97 +233,95 @@ button,input,select,textarea{font-family:inherit;font-size:16px;color:var(--ink)
 .btn:active{transform:translateY(1px)}
 .btn:hover{background:var(--accent-deep)}
 .btn:disabled{background:var(--n200);color:var(--n500);cursor:not-allowed;box-shadow:none}
-.btn .sub{font-size:12px;font-weight:500;opacity:.82;letter-spacing:0}
+.btn .sub{font-size:13px;font-weight:400;opacity:.82;letter-spacing:0}
 .btn.money{background:var(--money)}
 .btn.money:hover{background:var(--money-deep)}
 .btn.alert{background:var(--alert)}
 .btn.alert:hover{background:#7d2711}
 .btn.ghost{background:var(--paper);border:1px solid var(--line2);color:var(--ink2);box-shadow:none}
 .btn.ghost:hover{background:var(--raised);border-color:var(--accent-line)}
-.btn.sm{padding:12px 16px;font-size:14.5px;font-weight:700;min-height:44px}
+.btn.sm{padding:12px 16px;font-size:15px;font-weight:700;min-height:44px}
 
-.seg{display:grid;grid-auto-flow:column;gap:5px;background:var(--n200);padding:4px;
-     border-radius:var(--r-pill);margin-bottom:14px}
-.seg button{border:0;background:transparent;color:var(--ink2);font-size:14px;font-weight:700;
-            padding:11px 8px;border-radius:var(--r-pill);cursor:pointer;min-height:44px}
+.seg{display:grid;grid-auto-flow:column;gap:4px;background:var(--n200);padding:4px;
+     border-radius:var(--r-pill);margin-bottom:16px}
+.seg button{border:0;background:transparent;color:var(--ink2);font-size:15px;font-weight:700;
+            padding:12px 8px;border-radius:var(--r-pill);cursor:pointer;min-height:44px}
 .seg button[aria-pressed="true"]{background:var(--paper);color:var(--ink);box-shadow:var(--sh-1)}
 
 label{display:block;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
-      color:var(--mut);margin-bottom:6px}
+      color:var(--mut);margin-bottom:8px}
 input[type=text],input[type=tel],input[type=search],select,textarea{
-  width:100%;padding:14px 15px;border:1px solid var(--line2);border-radius:var(--r-md);
+  width:100%;padding:16px 16px;border:1px solid var(--line2);border-radius:var(--r-md);
   background:var(--bg);min-height:48px;
 }
 input:focus,select:focus,textarea:focus{background:var(--paper)}
 input::placeholder{color:var(--n500)}
-.field+.field,.grid2+.field,.field+.grid2,.grid2+.grid2{margin-top:13px}
+.field+.field,.grid2+.field,.field+.grid2,.grid2+.grid2{margin-top:12px}
 /* Two fields side by side, with their inputs on the same line.
    A label that wraps ("Floor (least you would take)" at half a phone width) is
    taller than one that does not, and with align-items:start that pushed its
    input a line below its neighbour's. Stretching both cells to equal height and
    letting the LABEL absorb the slack puts every input flush to the bottom of an
    equal-height box, so they line up whatever the label says. */
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:11px;align-items:stretch}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:stretch}
 .grid2>.field{display:flex;flex-direction:column}
 .grid2>.field>label{flex:1}
 
 /* Money input: the $ sits inside the field so the number owns the space. */
 .money-in{position:relative}
 .money-in span{position:absolute;left:14px;top:50%;transform:translateY(-50%);
-               font-size:19px;font-weight:600;color:var(--mut);pointer-events:none}
-.money-in input{padding-left:31px;font-size:19px;font-weight:650;letter-spacing:-.01em}
+               font-size:17px;font-weight:600;color:var(--mut);pointer-events:none}
+.money-in input{padding-left:31px;font-size:17px;font-weight:600;letter-spacing:-.01em}
 
 /* ---- the register band -------------------------------------------------- */
-.band{background:var(--band);color:#fff;border-radius:var(--r-lg);padding:16px 17px;
+.band{background:var(--band);color:#fff;border-radius:var(--r-lg);padding:16px 16px;
       box-shadow:var(--sh-band)}
-.band .k{font-size:9.5px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;
+.band .k{font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;
          color:rgba(255,255,255,.5)}
 .band .digits{font-family:var(--mono);font-size:37px;font-weight:700;letter-spacing:.14em;
-              margin-top:7px;line-height:1.05}
+              margin-top:8px;line-height:1.05}
 .band .digits .ph{color:rgba(255,255,255,.22)}
-.band .echo{margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.14);font-size:14px}
-.band .echo b{font-weight:650}
-.band .echo .amt{float:right;font-weight:680}
+.band .echo{margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.14);font-size:15px}
+.band .echo b{font-weight:600}
+.band .echo .amt{float:right;font-weight:600}
 .band .echo.bad{color:#F3A48C}
 .band .stackline{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.band .stackline .v{font-size:15.5px;font-weight:650;letter-spacing:-.01em;margin-top:3px}
+.band .stackline .v{font-size:15px;font-weight:600;letter-spacing:-.01em;margin-top:4px}
 .band .chip{border:1px solid rgba(255,255,255,.3);background:transparent;color:#fff;
-            border-radius:var(--r-pill);font-size:13px;font-weight:600;padding:8px 14px;cursor:pointer;flex:none}
+            border-radius:var(--r-pill);font-size:13px;font-weight:600;padding:8px 16px;cursor:pointer;flex:none}
 .band .chip:hover{background:rgba(255,255,255,.1)}
 
 /* ---- keypad ------------------------------------------------------------- */
 .pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
 .key{background:var(--paper);border:1px solid var(--line2);border-radius:var(--r-md);
-     font-size:23px;font-weight:600;padding:17px 0;cursor:pointer;box-shadow:var(--sh-1);
+     font-size:22px;font-weight:600;padding:17px 0;cursor:pointer;box-shadow:var(--sh-1);
      transition:transform .06s ease,background .12s ease}
 .key:active{transform:translateY(1px);background:var(--raised)}
-.key.sm{font-size:14px;font-weight:650;color:var(--mut)}
+.key.sm{font-size:15px;font-weight:600;color:var(--mut)}
 
 /* ---- lists -------------------------------------------------------------- */
 .list{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-lg);
       overflow:hidden;box-shadow:var(--sh-1)}
-.row{display:flex;align-items:center;gap:12px;padding:13px 15px;width:100%;
+.row{display:flex;align-items:center;gap:12px;padding:12px 16px;width:100%;
      background:none;border:0;text-align:left;font-size:inherit}
 .row+.row{border-top:1px solid var(--line)}
 button.row{cursor:pointer}
 button.row:hover{background:var(--raised)}
 .row .num{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--ink2);
           background:var(--bg);border:1px solid var(--line);border-radius:6px;
-          padding:5px 7px;flex:none;letter-spacing:.04em}
+          padding:4px 8px;flex:none;letter-spacing:.04em}
 .row .mid{flex:1;min-width:0}
 /* These are spans, and ellipsis does nothing on an inline box — without
    display:block a long title overflows into the amount column and is then
    silently clipped by .list's overflow:hidden, taking the price off screen. */
-.row .t{display:block;font-size:14.5px;font-weight:550;
-        overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.row .s{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--mut);margin-top:3px;
-        overflow:hidden;white-space:nowrap}
-.row .s .ctx{overflow:hidden;text-overflow:ellipsis}
-.row .amt{display:block;font-size:15.5px;font-weight:650;text-align:right;
+.row .t{display:block;font-size:15px;font-weight:600;}
+.row .s{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--mut);margin-top:4px;}
+.row .s .ctx{;}
+.row .amt{display:block;font-size:15px;font-weight:600;text-align:right;
           white-space:nowrap;flex:none}
-.row .amt .was{display:block;font-size:11.5px;font-weight:500;color:var(--mut);
+.row .amt .was{display:block;font-size:11px;font-weight:400;color:var(--mut);
                text-decoration:line-through}
-.row .x{background:none;border:0;color:var(--line2);font-size:21px;line-height:1;
+.row .x{background:none;border:0;color:var(--line2);font-size:22px;line-height:1;
         padding:4px 0 4px 6px;cursor:pointer;flex:none;width:auto}
 .row .x:hover{color:var(--alert)}
 .thumb{width:42px;height:42px;border-radius:var(--r-sm);object-fit:cover;flex:none;
@@ -268,55 +329,55 @@ button.row:hover{background:var(--raised)}
 /* Photos never sync, so a record from another device legitimately has no image
    here. Say that, rather than showing an unexplained empty square. */
 .thumb.absent{display:flex;align-items:center;justify-content:center;text-align:center;
-              font-size:8.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+              font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
               color:var(--mut);line-height:1.15;padding:3px;border-style:dashed}
 .thumb.absent.loading{border-style:solid}
 
-.pill{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.08em;
-      text-transform:uppercase;padding:3px 8px;border-radius:var(--r-pill);
+.pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.08em;
+      text-transform:uppercase;padding:4px 8px;border-radius:var(--r-pill);
       border:1px solid var(--line2);color:var(--mut);background:var(--bg)}
 .pill.sold{color:var(--money);background:var(--money-soft);border-color:var(--money-line)}
 .pill.unpriced{color:var(--alert);background:var(--alert-soft);border-color:var(--alert-line)}
 
 .empty{padding:30px 20px;text-align:center}
 .empty .t{font-size:15px;font-weight:600}
-.empty .s{font-size:13.5px;color:var(--mut);margin-top:4px;max-width:34ch;margin-inline:auto}
+.empty .s{font-size:13px;color:var(--mut);margin-top:4px;max-width:34ch;margin-inline:auto}
 
 /* ---- feedback ----------------------------------------------------------- */
-.flash{display:flex;gap:10px;padding:13px 14px;border-radius:var(--r-md);font-size:14px;margin-top:12px}
-.flash .b{font-weight:650}
-.flash .s{color:var(--ink2);font-weight:400;font-size:12.5px;margin-top:2px}
+.flash{display:flex;gap:12px;padding:12px 16px;border-radius:var(--r-md);font-size:15px;margin-top:12px}
+.flash .b{font-weight:600}
+.flash .s{color:var(--ink2);font-weight:400;font-size:13px;margin-top:2px}
 .flash.ok{background:var(--money-soft);border:1px solid var(--money-line);color:var(--money)}
 .flash.bad{background:var(--alert-soft);border:1px solid var(--alert-line);color:var(--alert)}
 
 /* ---- deal math ---------------------------------------------------------- */
 .deal{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-lg);
-      padding:16px 17px;box-shadow:var(--sh-2);margin-top:12px}
-.dl{display:flex;justify-content:space-between;gap:12px;font-size:14px}
-.dl+.dl{margin-top:7px}
+      padding:16px 16px;box-shadow:var(--sh-2);margin-top:12px}
+.dl{display:flex;justify-content:space-between;gap:12px;font-size:15px}
+.dl+.dl{margin-top:8px}
 .dl.b{color:var(--mut)}
-.dial{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.dial{margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
 .dial .top{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
 .dial .pct{font-size:13px;font-weight:600;color:var(--mut)}
 .dial .amt{font-size:34px;font-weight:700;letter-spacing:-.035em;line-height:1}
 input[type=range]{width:100%;margin:12px 0 0;accent-color:var(--ink);height:28px}
-.floorline{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;margin-top:10px;
+.floorline{display:flex;justify-content:space-between;gap:12px;font-size:13px;margin-top:12px;
            padding-top:10px;border-top:1px solid var(--line)}
-.floorline .good{color:var(--money);font-weight:650}
-.floorline .bad{color:var(--alert);font-weight:650}
+.floorline .good{color:var(--money);font-weight:600}
+.floorline .bad{color:var(--alert);font-weight:600}
 
-.evidence{display:flex;align-items:center;justify-content:space-between;gap:10px;
-          margin-top:12px;padding:13px 14px;border:1px solid var(--line2);border-radius:var(--r-md);
-          text-decoration:none;color:var(--ink);font-size:14.5px;font-weight:600;background:var(--raised)}
+.evidence{display:flex;align-items:center;justify-content:space-between;gap:12px;
+          margin-top:12px;padding:12px 16px;border:1px solid var(--line2);border-radius:var(--r-md);
+          text-decoration:none;color:var(--ink);font-size:15px;font-weight:600;background:var(--raised)}
 .evidence:hover{border-color:var(--ink);background:var(--paper)}
-.claim{font-size:12px;color:var(--mut);margin-top:8px;line-height:1.45}
+.claim{font-size:13px;color:var(--mut);margin-top:8px;line-height:1.45}
 
 /* The primary action sits in flow, directly under whatever it acts on.
    Pinning it to the viewport put it on top of the dial and the floor line
    whenever the panel ran past the fold — covering the exact numbers being
    adjusted with a buyer waiting. Measured, not assumed: at scroll-top the
    pinned button's box started at y=706 and the dial amount at y=720. */
-.sticky{margin-top:14px}
+.sticky{margin-top:16px}
 
 /* ---- tab bar ------------------------------------------------------------ */
 .tabbar{
@@ -328,7 +389,7 @@ input[type=range]{width:100%;margin:12px 0 0;accent-color:var(--ink);height:28px
 .tabbar .inner{max-width:600px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
 .tabbar button{
   background:none;border:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;
-  gap:4px;padding:9px 4px 10px;color:var(--mut);font-size:10.5px;font-weight:650;letter-spacing:.02em;
+  gap:4px;padding:8px 4px 10px;color:var(--mut);font-size:10px;font-weight:600;letter-spacing:.02em;
   height:var(--tabbar-h);justify-content:center;
 }
 .tabbar button svg{width:23px;height:23px;stroke-width:1.7}
@@ -340,17 +401,17 @@ input[type=range]{width:100%;margin:12px 0 0;accent-color:var(--ink);height:28px
 /* ---- sync bar ----------------------------------------------------------- */
 /* Signed out is a valid way to run the app; it just must never be mistaken for
    signed in. The three states differ in colour, dot and wording. */
-.syncbar{display:flex;align-items:center;gap:9px;margin:0 0 16px;padding:9px 12px;
+.syncbar{display:flex;align-items:center;gap:8px;margin:0 0 16px;padding:8px 12px;
          border:1px solid var(--line);border-radius:var(--r-pill);background:var(--paper);
-         font-size:12.5px;box-shadow:var(--sh-1)}
+         font-size:13px;box-shadow:var(--sh-1)}
 .syncbar .dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--mut)}
 .syncbar .text{flex:1;min-width:0;color:var(--ink2);line-height:1.3}
-.syncbar .text .sub{display:block;color:var(--mut);font-size:11.5px}
-.syncbar .link{background:none;border:0;padding:6px 2px;cursor:pointer;flex:none;
-               font-size:12.5px;font-weight:650;color:var(--ink);text-decoration:underline;
+.syncbar .text .sub{display:block;color:var(--mut);font-size:11px}
+.syncbar .link{background:none;border:0;padding:8px 2px;cursor:pointer;flex:none;
+               font-size:13px;font-weight:600;color:var(--ink);text-decoration:underline;
                text-underline-offset:3px}
 .syncbar .link:disabled{color:var(--mut);cursor:not-allowed}
-.syncbar .fail{flex-basis:100%;color:var(--alert);font-size:11.5px}
+.syncbar .fail{flex-basis:100%;color:var(--alert);font-size:11px}
 .syncbar.synced{background:var(--money-soft);border-color:var(--money-line)}
 .syncbar.synced .dot{background:var(--money)}
 .syncbar.synced .text{color:var(--money)}
@@ -361,7 +422,7 @@ input[type=range]{width:100%;margin:12px 0 0;accent-color:var(--ink);height:28px
 /* ---- five tabs -----------------------------------------------------------
    One more than before, so the labels get tighter and the icons carry more. */
 .tabbar .inner{grid-template-columns:repeat(5,1fr)}
-.tabbar button{font-size:10px;gap:3px;padding:8px 2px 9px}
+.tabbar button{font-size:10px;gap:4px;padding:8px 2px 9px}
 .tabbar button svg{width:22px;height:22px}
 
 /* ---- the scan field ------------------------------------------------------
@@ -370,7 +431,7 @@ input[type=range]{width:100%;margin:12px 0 0;accent-color:var(--ink);height:28px
 /* Specificity, deliberately: the base `input[type=tel]` rule is (0,1,1) and
    would otherwise paint this field white-on-white inside the dark band. */
 .band input.band-input{
-  width:100%;margin-top:7px;background:transparent;border:0;padding:0;
+  width:100%;margin-top:8px;background:transparent;border:0;padding:0;
   color:#fff;font-family:var(--mono);font-size:37px;font-weight:700;letter-spacing:.14em;
   line-height:1.05;
 }
@@ -379,20 +440,20 @@ input[type=range]{width:100%;margin:12px 0 0;accent-color:var(--ink);height:28px
 .band input.band-input:focus-visible{outline:2px solid rgba(255,255,255,.6);outline-offset:6px;border-radius:4px}
 
 /* ---- switch --------------------------------------------------------------- */
-.switch{display:flex;align-items:flex-start;gap:11px;cursor:pointer;
+.switch{display:flex;align-items:flex-start;gap:12px;cursor:pointer;
         text-transform:none;letter-spacing:0;font-size:inherit;color:inherit;margin:0}
 .switch input{width:22px;height:22px;flex:none;margin:1px 0 0;accent-color:var(--ink)}
 .switch .t{display:block;font-size:15px;font-weight:600;letter-spacing:-.01em}
-.switch .s{display:block;font-size:12.5px;color:var(--mut);margin-top:2px}
+.switch .s{display:block;font-size:13px;color:var(--mut);margin-top:2px}
 
 /* An inline sub-form: used where navigating away would discard unsaved work. */
-.subform{margin-top:11px;padding:13px;border:1px dashed var(--line2);
+.subform{margin-top:12px;padding:13px;border:1px dashed var(--line2);
          border-radius:var(--r-md);background:var(--raised)}
 
 /* The comps link with nothing to search on yet: present, obviously inert, and
    saying what it needs — rather than absent, which reads as "not built". */
 .evidence.disabled{color:var(--mut);background:var(--bg);border-style:dashed;cursor:default}
-.evidence .why{font-size:12px;font-weight:500;color:var(--mut);text-align:right}
+.evidence .why{font-size:13px;font-weight:400;color:var(--mut);text-align:right}
 
 /* ============================================================================
    ADD A CARD — the Scan screen after the form moved onto it.
@@ -407,36 +468,36 @@ input[type=range]{width:100%;margin:12px 0 0;accent-color:var(--ink);height:28px
 /* ---- the pinned group --------------------------------------------------- */
 /* Declared once and carried to the next card. It is the one thing the camera
    cannot read, so it stays visible rather than living in a dropdown. */
-.stackbar{display:flex;align-items:center;gap:11px;margin-bottom:11px;
-          padding:9px 9px 9px 15px;background:var(--money-soft);
+.stackbar{display:flex;align-items:center;gap:12px;margin-bottom:12px;
+          padding:8px 8px 9px 15px;background:var(--money-soft);
           border:1px solid var(--money-line);border-radius:var(--r-pill)}
 .stackbar .grow{flex:1;min-width:0}
-.stackbar .k{font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;
+.stackbar .k{font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;
              color:var(--money);opacity:.75}
-.stackbar .v{font-size:13.5px;font-weight:650;color:var(--money);margin-top:1px;
+.stackbar .v{font-size:13px;font-weight:600;color:var(--money);margin-top:2px;
              white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.stackbar .stack-pick{flex:none;width:auto;max-width:44%;padding:8px 11px;border-radius:var(--r-pill);
+.stackbar .stack-pick{flex:none;width:auto;max-width:44%;padding:8px 12px;border-radius:var(--r-pill);
                       border:1px solid var(--money-line);background:var(--paper);
-                      color:var(--money);font-size:13px;font-weight:650}
+                      color:var(--money);font-size:13px;font-weight:600}
 .stackbar .ch{flex:none;background:var(--paper);border:1px solid var(--money-line);
-              border-radius:var(--r-pill);color:var(--money);font-size:13px;font-weight:650;
-              padding:8px 14px;cursor:pointer}
+              border-radius:var(--r-pill);color:var(--money);font-size:13px;font-weight:600;
+              padding:8px 16px;cursor:pointer}
 
 /* ---- the console: number + camera --------------------------------------- */
-.console{background:var(--band);border-radius:var(--r-lg);padding:14px 15px 15px;
-         box-shadow:var(--sh-band);display:flex;gap:13px;align-items:stretch}
+.console{background:var(--band);border-radius:var(--r-lg);padding:16px 16px 15px;
+         box-shadow:var(--sh-band);display:flex;gap:12px;align-items:stretch}
 .console .fld{flex:1;min-width:0}
-.console .k{display:block;font-size:9.5px;font-weight:700;letter-spacing:.15em;
+.console .k{display:block;font-size:10px;font-weight:700;letter-spacing:.15em;
             text-transform:uppercase;color:rgba(255,255,255,.5);margin:0}
-.console .echo{margin-top:8px;font-size:12.5px;color:rgba(255,255,255,.6)}
-.console .echo b{color:#8FE9C0;font-weight:650}
+.console .echo{margin-top:8px;font-size:13px;color:rgba(255,255,255,.6)}
+.console .echo b{color:#8FE9C0;font-weight:600}
 .console .echo.bad{color:#F3A48C}
 
 /* The number is typed straight into the console. Specificity is deliberate:
    the base input[type=tel] rule is (0,1,1) and would paint this white-on-white. */
 .console input.band-input{
-  width:100%;margin-top:6px;background:transparent;border:0;padding:0;
-  color:#fff;font-family:var(--mono);font-size:33px;font-weight:700;letter-spacing:.11em;
+  width:100%;margin-top:8px;background:transparent;border:0;padding:0;
+  color:#fff;font-family:var(--mono);font-size:37px;font-weight:700;letter-spacing:.11em;
   line-height:1.05;
 }
 .console input.band-input::placeholder{color:rgba(255,255,255,.26)}
@@ -449,27 +510,27 @@ input[type=range]{width:100%;margin:12px 0 0;accent-color:var(--ink);height:28px
       border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);
       padding:0;cursor:pointer;color:#fff}
 .lens img{width:100%;height:100%;object-fit:cover;display:block}
-.lens .lbl{position:absolute;left:0;right:0;bottom:0;font-size:8.5px;font-weight:700;
+.lens .lbl{position:absolute;left:0;right:0;bottom:0;font-size:11px;font-weight:700;
            letter-spacing:.1em;text-transform:uppercase;text-align:center;color:#fff;
            background:rgba(0,0,0,.62);padding:3px 0}
 .lens.empty{border-style:dashed;display:flex;flex-direction:column;align-items:center;
-            justify-content:center;gap:4px;color:rgba(255,255,255,.6);font-size:10.5px;
-            font-weight:650;text-align:center;line-height:1.3;padding:6px}
+            justify-content:center;gap:4px;color:rgba(255,255,255,.6);font-size:10px;
+            font-weight:600;text-align:center;line-height:1.3;padding:6px}
 .lens.empty .ico{font-size:22px;line-height:1}
 .lens:disabled{opacity:.5;cursor:not-allowed}
 
 /* ---- the composed title ------------------------------------------------- */
 .titleprev{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-md);
-           padding:11px 13px;margin-top:11px}
-.titleprev .k{font-size:9px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;
+           padding:12px 12px;margin-top:12px}
+.titleprev .k{font-size:10px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;
               color:var(--mut)}
-.titleprev .v{font-size:13.5px;font-weight:600;margin-top:4px;line-height:1.35}
-.titleprev .v.muted{font-weight:500;color:var(--mut)}
+.titleprev .v{font-size:13px;font-weight:600;margin-top:4px;line-height:1.35}
+.titleprev .v.muted{font-weight:400;color:var(--mut)}
 
 /* A field the camera filled. Green means "this came from the read, not from
    you" — tap it and it becomes an ordinary field again. */
 input.from-read{background:var(--money-soft);border-color:var(--money-line);
-                color:var(--money);font-weight:650}
+                color:var(--money);font-weight:600}
 .claim.bad{color:var(--alert);font-weight:600}
 /* A negative profit is a real answer and is shown as one, not hidden. */
 .grp .amt.bad{color:var(--alert)}
@@ -479,10 +540,10 @@ input.from-read{background:var(--money-soft);border-color:var(--money-line);
 .syncbar .link{min-height:44px;display:inline-flex;align-items:center;padding:0 4px}
 
 /* ---- the action row ----------------------------------------------------- */
-.addrow{display:flex;gap:9px;align-items:stretch;margin-top:12px}
+.addrow{display:flex;gap:8px;align-items:stretch;margin-top:12px}
 .addrow .btn{flex:1}
 .discard{flex:none;width:54px;border:1px solid var(--alert-line);border-radius:var(--r-md);
-         background:var(--alert-soft);color:var(--alert);font-size:20px;line-height:1;
+         background:var(--alert-soft);color:var(--alert);font-size:22px;line-height:1;
          cursor:pointer}
 .discard:hover{background:#F7E2DA}
 
@@ -496,20 +557,19 @@ input.from-read{background:var(--money-soft);border-color:var(--money-line);
 .scrim{position:fixed;inset:0;z-index:49;background:rgba(6,6,4,.55)}
 .dlg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:50;
      width:min(340px,calc(100vw - 40px));background:var(--paper);border-radius:var(--r-lg);
-     padding:19px 19px 16px;box-shadow:0 22px 60px rgba(0,0,0,.45)}
-.dlg h4{margin:0;font-size:17px;font-weight:680;letter-spacing:-.02em}
-.dlg .card-line{display:flex;align-items:center;gap:10px;margin:13px 0;padding:10px 11px;
+     padding:20px 20px 16px;box-shadow:0 22px 60px rgba(0,0,0,.45)}
+.dlg h4{margin:0;font-size:17px;font-weight:600;letter-spacing:-.02em}
+.dlg .card-line{display:flex;align-items:center;gap:12px;margin:13px 0;padding:12px 12px;
                 background:var(--bg);border:1px solid var(--line);border-radius:var(--r-md)}
-.dlg .card-line .n{font-family:var(--mono);font-size:12.5px;font-weight:700;color:var(--ink2);
+.dlg .card-line .n{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--ink2);
                    background:var(--paper);border:1px solid var(--line2);border-radius:5px;
-                   padding:4px 6px;flex:none}
-.dlg .card-line .t{flex:1;min-width:0;font-size:13.5px;font-weight:600;
-                   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.dlg .card-line .a{font-size:13.5px;font-weight:650;flex:none}
+                   padding:4px 8px;flex:none}
+.dlg .card-line .t{flex:1;min-width:0;font-size:13px;font-weight:600;}
+.dlg .card-line .a{font-size:13px;font-weight:600;flex:none}
 .dlg p{margin:0 0 15px;font-size:13px;color:var(--ink2);line-height:1.5}
-.dlg p b{color:var(--alert);font-weight:650}
-.dlg .acts{display:flex;gap:9px}
-.dlg .acts .btn{flex:1;padding:12px 14px;font-size:15px}
+.dlg p b{color:var(--alert);font-weight:600}
+.dlg .acts{display:flex;gap:8px}
+.dlg .acts .btn{flex:1;padding:12px 16px;font-size:15px}
 .btn.danger{background:var(--alert)}
 .btn.danger:hover{background:#982C13}
 
@@ -519,31 +579,30 @@ input.from-read{background:var(--money-soft);border-color:var(--money-line);
    tap the text to edit, X to delete. Whatever stays on builds the search. */
 .reads{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-lg);
        overflow:hidden;box-shadow:var(--sh-1)}
-.rd{display:flex;align-items:center;gap:10px;padding:9px 12px}
+.rd{display:flex;align-items:center;gap:8px 12px;padding:8px 12px;flex-wrap:wrap}
 .rd+.rd{border-top:1px solid var(--line)}
 .rd .tick{flex:none;width:24px;height:24px;border-radius:6px;border:1.5px solid var(--line2);
-          background:var(--paper);color:transparent;font-size:13px;font-weight:800;
+          background:var(--paper);color:transparent;font-size:13px;font-weight:700;
           line-height:1;padding:0;cursor:pointer}
 .rd.on .tick{background:var(--money);border-color:var(--money);color:#fff}
 .rd .txt{flex:1;min-width:0;background:none;border:0;padding:6px 0;text-align:left;
-         font-size:14.5px;font-weight:600;color:var(--ink);cursor:text;
-         white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rd.off .txt{color:var(--mut);text-decoration:line-through;font-weight:500}
-.rd .x{flex:none;background:none;border:0;color:var(--line2);font-size:20px;line-height:1;
+         font-size:15px;font-weight:600;color:var(--ink);cursor:text;}
+.rd.off .txt{color:var(--mut);text-decoration:line-through;font-weight:400}
+.rd .x{flex:none;background:none;border:0;color:var(--line2);font-size:22px;line-height:1;
        padding:4px 0 4px 4px;cursor:pointer;width:auto}
 .rd .x:hover{color:var(--alert)}
-.rd.edit{background:var(--raised);gap:9px}
-.rd.edit input{flex:1;min-width:0;padding:9px 11px;border:1.5px solid var(--ink);
+.rd.edit{background:var(--raised);gap:8px}
+.rd.edit input{flex:1;min-width:0;padding:8px 12px;border:1.5px solid var(--ink);
                border-radius:var(--r-sm);background:var(--paper);font-weight:600}
 .rd.edit .done{flex:none;background:var(--ink);color:#fff;border:0;border-radius:var(--r-sm);
-               font-size:13px;font-weight:700;padding:10px 13px;cursor:pointer;width:auto}
+               font-size:13px;font-weight:700;padding:12px 12px;cursor:pointer;width:auto}
 
 /* The search that is about to run, built from whatever is still ticked. */
 .searchprev{background:var(--money-soft);border:1px solid var(--money-line);
-            border-radius:var(--r-md);padding:10px 12px;margin-top:11px}
-.searchprev .k{font-size:9px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;
+            border-radius:var(--r-md);padding:12px 12px;margin-top:12px}
+.searchprev .k{font-size:10px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;
                color:var(--money);opacity:.8}
-.searchprev .v{font-size:13.5px;font-weight:650;margin-top:4px;line-height:1.35;color:var(--money)}
+.searchprev .v{font-size:13px;font-weight:600;margin-top:4px;line-height:1.35;color:var(--money)}
 
 /* ---- the read, confirmed once -------------------------------------------
    A read is a claim about the card. It gets one deliberate look while the card
@@ -556,13 +615,13 @@ input.from-read{background:var(--money-soft);border-color:var(--money-line);
        max-width:600px;margin:0 auto}
 .sheet .shead{flex:none;display:flex;align-items:flex-start;gap:12px;
               padding:16px 16px 13px;border-bottom:1px solid var(--line)}
-.sheet .shead h4{margin:0;font-size:18px;font-weight:680;letter-spacing:-.02em}
-.sheet .shead .sub{margin:4px 0 0;font-size:12.5px;color:var(--mut);line-height:1.4}
+.sheet .shead h4{margin:0;font-size:17px;font-weight:600;letter-spacing:-.02em}
+.sheet .shead .sub{margin:4px 0 0;font-size:13px;color:var(--mut);line-height:1.4}
 .sheet .shead .cnt{flex:none;font-family:var(--mono);font-size:13px;font-weight:700;
                    color:var(--ink2);background:var(--paper);border:1px solid var(--line2);
-                   border-radius:var(--r-pill);padding:5px 10px}
-.sheet .sbody{flex:1;overflow-y:auto;padding:13px 16px 16px}
-.sheet .sfoot{flex:none;display:flex;gap:9px;padding:12px 16px;
+                   border-radius:var(--r-pill);padding:4px 12px}
+.sheet .sbody{flex:1;overflow-y:auto;padding:12px 16px 16px}
+.sheet .sfoot{flex:none;display:flex;gap:8px;padding:12px 16px;
               padding-bottom:calc(12px + env(safe-area-inset-bottom));
               border-top:1px solid var(--line);background:var(--paper)}
 .sheet .sfoot .btn{flex:1}
@@ -570,18 +629,18 @@ input.from-read{background:var(--money-soft);border-color:var(--money-line);
 
 /* "Edit" in words. A tappable-looking run of text is not an obvious affordance
    on a screen where most text is just text. */
-.rd .pen{flex:none;background:none;border:0;padding:6px 2px;cursor:pointer;width:auto;
+.rd .pen{flex:none;background:none;border:0;padding:8px 2px;cursor:pointer;width:auto;
          font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
          color:var(--mut);text-decoration:underline;text-underline-offset:3px}
 .rd .pen:hover{color:var(--ink)}
 .rd.off .pen{opacity:.5}
-.searchprev .v.muted{color:var(--mut);font-weight:500}
+.searchprev .v.muted{color:var(--mut);font-weight:400}
 
 
 /* The card name holds the whole read once confirmed, so it needs the room. */
 textarea#s-name{resize:vertical;min-height:62px;line-height:1.4;font-size:15px}
 textarea#s-name.from-read{background:var(--money-soft);border-color:var(--money-line);
-                          color:var(--money);font-weight:650}
+                          color:var(--money);font-weight:600}
 
 /* ---- the star ------------------------------------------------------------
    Replaces up/down arrows, which were the wrong control for a phone: two tiny
@@ -591,9 +650,9 @@ textarea#s-name.from-read{background:var(--money-soft);border-color:var(--money-
    order. The little number only shows once more than one is starred, which is
    the only time the order is ambiguous. */
 .rd .star{flex:none;position:relative;background:none;border:0;cursor:pointer;width:auto;
-          padding:4px 3px;font-size:19px;line-height:1;color:var(--line2)}
+          padding:4px 4px;font-size:17px;line-height:1;color:var(--line2)}
 .rd .star.on{color:var(--accent)}
-.rd .star .ord{position:absolute;right:-2px;bottom:1px;font-size:9px;font-weight:800;
+.rd .star .ord{position:absolute;right:-2px;bottom:1px;font-size:10px;font-weight:700;
                font-family:var(--mono);color:var(--ink);background:var(--paper);
                border:1px solid var(--line2);border-radius:999px;
                min-width:13px;height:13px;line-height:11px;text-align:center}
@@ -605,28 +664,27 @@ textarea#s-name.from-read{background:var(--money-soft);border-color:var(--money-
    card row, and the count under the name says which cards that money covers.
    A sold card is in neither: its money is realized and shows on the sales
    side, not here. */
-.grp{display:flex;align-items:center;gap:13px;padding:14px 15px;width:100%;min-height:44px;
+.grp{display:flex;align-items:center;gap:12px;padding:16px 16px;width:100%;min-height:44px;
      background:none;border:0;text-align:left;cursor:pointer;font:inherit;color:inherit}
 .grp+.grp{border-top:1px solid var(--line)}
 .grp:active{background:var(--raised)}
 .grp .mid{flex:1;min-width:0}
-.grp .t{display:block;font-family:var(--display);font-weight:400;font-size:17px;
-        white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.grp .s{display:block;font-size:12.5px;color:var(--mut);margin-top:4px}
-.grp .amt{flex:none;font-family:var(--display);font-weight:400;font-size:18px;
+.grp .t{display:block;font-family:var(--display);font-weight:400;font-size:17px;}
+.grp .s{display:block;font-size:13px;color:var(--mut);margin-top:4px}
+.grp .amt{flex:none;font-family:var(--display);font-weight:400;font-size:17px;
            color:var(--money);text-align:right}
 
 /* The two numbers at the top of one group. Same register as the day totals. */
-.tot{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--line);
+.tot{display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px;background:var(--line);
      border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--sh-1)}
 .tot.two{grid-template-columns:1fr 1fr}
-.tot>div{background:var(--paper);padding:12px 11px}
-.tot .k{font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
-.tot .v{font-size:19px;font-weight:680;letter-spacing:-.02em;margin-top:3px}
+.tot>div{background:var(--paper);padding:12px 12px}
+.tot .k{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
+.tot .v{font-size:17px;font-weight:600;letter-spacing:-.02em;margin-top:4px}
 .tot .v.money{color:var(--money)}
 
 /* Ticking a pile of cards into a group. */
-.chk{display:flex;align-items:center;gap:11px;padding:13px 15px;width:100%;
+.chk{display:flex;align-items:center;gap:12px;padding:12px 16px;width:100%;
      border:0;background:none;text-align:left;font:inherit;color:inherit;cursor:pointer}
 .chk+.chk{border-top:1px solid var(--line)}
 .chk:active{background:var(--raised)}
@@ -635,10 +693,8 @@ textarea#s-name.from-read{background:var(--money-soft);border-color:var(--money-
           font-size:13px;line-height:1;color:#fff}
 .chk .box.on{background:var(--money);border-color:var(--money)}
 .chk .mid{flex:1;min-width:0}
-.chk .t{display:block;font-size:14.5px;font-weight:550;
-        white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.chk .s{display:block;font-size:12.5px;color:var(--mut);margin-top:2px;
-        white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chk .t{display:block;font-size:15px;font-weight:600;}
+.chk .s{display:block;font-size:13px;color:var(--mut);margin-top:2px;}
 
 /* ---- the sticker number, taken off the read --------------------------------
    The sticker is on the sleeve when the photo is taken, so its number comes
@@ -651,7 +707,7 @@ textarea#s-name.from-read{background:var(--money-soft);border-color:var(--money-
    rather than worked around. */
 .rd .hash{flex:none;width:27px;height:27px;padding:0;border-radius:7px;
           border:1.5px solid var(--line2);background:var(--paper);color:var(--mut);
-          font-family:var(--mono);font-size:14px;font-weight:800;line-height:1;cursor:pointer}
+          font-family:var(--mono);font-size:15px;font-weight:700;line-height:1;cursor:pointer}
 .rd .hash:hover{border-color:var(--ink);color:var(--ink)}
 .rd.off .hash{opacity:.4}
 /* NO SPACER ON A ROW WITHOUT A #, measured rather than guessed. Holding the
@@ -661,18 +717,18 @@ textarea#s-name.from-read{background:var(--money-soft);border-color:var(--money-
    a control that is not there. The name matters more than the column. */
 
 .rd.assigned{background:var(--money-deep);color:#fff;padding-top:11px;padding-bottom:11px}
-.rd.assigned .mark{flex:none;font-family:var(--mono);font-size:15px;font-weight:800;
+.rd.assigned .mark{flex:none;font-family:var(--mono);font-size:15px;font-weight:700;
                    color:var(--money-line);width:24px;text-align:center}
 .rd.assigned .txt{color:#fff;font-weight:700}
-.rd.assigned .tag{flex:none;font-size:9px;font-weight:800;letter-spacing:.12em;
+.rd.assigned .tag{flex:none;font-size:10px;font-weight:700;letter-spacing:.12em;
                   text-transform:uppercase;color:var(--money-deep);background:var(--money-line);
-                  border-radius:var(--r-pill);padding:4px 9px}
+                  border-radius:var(--r-pill);padding:4px 8px}
 .rd.assigned .pen{color:rgba(255,255,255,.72)}
 .rd.assigned .pen:hover{color:#fff}
 .rd.assigned .undo{flex:none;background:rgba(255,255,255,.12);
                    border:1px solid rgba(255,255,255,.26);color:#fff;
-                   font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
-                   border-radius:var(--r-pill);padding:6px 11px;cursor:pointer;width:auto}
+                   font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+                   border-radius:var(--r-pill);padding:8px 12px;cursor:pointer;width:auto}
 .rd.assigned .undo:hover{background:rgba(255,255,255,.2)}
 
 /* ---- Prep: the night before, as three steps -------------------------------
@@ -684,7 +740,7 @@ textarea#s-name.from-read{background:var(--money-soft);border-color:var(--money-
                 transition:width .25s ease}
 
 .step{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-lg);
-      box-shadow:var(--sh-1);margin-bottom:11px;overflow:hidden}
+      box-shadow:var(--sh-1);margin-bottom:12px;overflow:hidden}
 /* The step being worked is terracotta-tinted, so the eye lands on it first.
    Driven by a class from the component, not :first-of-type — once step 1 is
    done the tint has to MOVE, and a highlight stuck on a finished step points
@@ -692,40 +748,39 @@ textarea#s-name.from-read{background:var(--money-soft);border-color:var(--money-
 .step.active{background:var(--accent-soft);border-color:var(--accent-line)}
 .step.active .n{background:var(--accent)}
 .step.active > .sbody{border-top-color:var(--accent-line)}
-.step>.shead{display:flex;align-items:center;gap:11px;padding:13px 14px}
+.step>.shead{display:flex;align-items:center;gap:12px;padding:12px 16px}
 .step .n{flex:none;width:30px;height:30px;border-radius:999px;background:var(--accent);
-         color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;
+         color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;
          justify-content:center;line-height:1}
 .step.settled .n{background:var(--money)}
 .step>.shead .grow{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .step .t{font-family:var(--display);font-weight:400;font-size:17px;letter-spacing:0}
-.step .c{font-size:12.5px;font-weight:600}
+.step .c{font-size:13px;font-weight:600}
 .step .c.alert{color:var(--alert)}
 .step .c.money{color:var(--money)}
 .step .c.mut{color:var(--mut)}
 .step>.sbody{padding:0 14px 14px;border-top:1px solid var(--line);padding-top:12px}
-.stepnote{margin:0 0 10px;font-size:12.5px;color:var(--mut);line-height:1.45}
+.stepnote{margin:0 0 10px;font-size:13px;color:var(--mut);line-height:1.45}
 
-.queue{display:flex;flex-direction:column;gap:1px;background:var(--line);
+.queue{display:flex;flex-direction:column;gap:2px;background:var(--line);
        border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden}
-.qrow{display:flex;align-items:center;gap:10px;width:100%;padding:11px 12px;
+.qrow{display:flex;align-items:center;gap:12px;width:100%;padding:12px 12px;
       background:var(--paper);border:0;cursor:pointer;font:inherit;text-align:left;
       min-height:44px}
 .qrow:hover{background:var(--raised)}
-.qrow .num{flex:none;font-family:var(--mono);font-size:12.5px;font-weight:700;
+.qrow .num{flex:none;font-family:var(--mono);font-size:13px;font-weight:700;
            color:var(--ink2);background:var(--bg);border:1px solid var(--line2);
-           border-radius:6px;padding:3px 7px}
-.qrow .nm{flex:1;min-width:0;font-size:14px;font-weight:600;
-          white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+           border-radius:6px;padding:4px 8px}
+.qrow .nm{flex:1;min-width:0;font-size:15px;font-weight:600;}
 .qrow .need{flex:none;font-size:11px;font-weight:700;color:var(--alert)}
 .qrow .ask{flex:none;font-family:var(--mono);font-size:13px;font-weight:700;color:var(--money)}
 .queue .more{width:100%;padding:11px;background:var(--raised);border:0;cursor:pointer;
-             font:inherit;font-size:12.5px;font-weight:650;color:var(--ink2);min-height:44px}
+             font:inherit;font-size:13px;font-weight:600;color:var(--ink2);min-height:44px}
 
 /* The group picker. A group is the physical unit that gets carried, which is
    why the case is packed by group and never card by card. */
 .packlist{display:flex;flex-direction:column;gap:8px}
-.packrow{display:flex;align-items:center;gap:11px;width:100%;padding:12px 13px;
+.packrow{display:flex;align-items:center;gap:12px;width:100%;padding:12px 12px;
          background:var(--paper);border:1.5px solid var(--line);
          border-radius:var(--r-md);cursor:pointer;font:inherit;text-align:left;
          min-height:44px}
@@ -733,60 +788,59 @@ textarea#s-name.from-read{background:var(--money-soft);border-color:var(--money-
 .packrow .tick{flex:none;width:24px;height:24px;border-radius:6px;
                border:1.5px solid var(--line2);background:var(--paper);
                display:flex;align-items:center;justify-content:center;
-               font-size:13px;font-weight:800;color:transparent;line-height:1}
+               font-size:13px;font-weight:700;color:transparent;line-height:1}
 .packrow.on .tick{background:var(--money);border-color:var(--money);color:#fff}
-.packrow .grow{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
-.packrow .nm{font-size:15px;font-weight:700;
-             white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.packrow .sub{font-size:11.5px;color:var(--mut)}
-.packrow .val{flex:none;font-family:var(--display);font-weight:400;font-size:16px}
+.packrow .grow{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.packrow .nm{font-size:15px;font-weight:700;}
+.packrow .sub{font-size:11px;color:var(--mut)}
+.packrow .val{flex:none;font-family:var(--display);font-weight:400;font-size:15px}
 .packrow.on .val{color:var(--money-deep)}
 /* Its own line, not tacked onto the subline — an earlier draft put it there and
    it clipped behind the value on a narrow phone. */
-.packrow .where{flex-basis:100%;font-size:10.5px;font-weight:700;letter-spacing:.06em;
+.packrow .where{flex-basis:100%;font-size:10px;font-weight:700;letter-spacing:.06em;
                 text-transform:uppercase;color:var(--mut);order:9}
 .packrow.on .where{color:var(--money)}
 .packlist .packrow{flex-wrap:wrap}
 
 .incar{background:var(--money-soft);border:1px solid var(--money-line);
-       border-radius:var(--r-xl);padding:16px 17px;margin:15px 0 13px}
-.incar h2{margin:0 0 11px;font-size:10.5px;font-weight:700;letter-spacing:.15em;
+       border-radius:var(--r-xl);padding:16px 16px;margin:15px 0 13px}
+.incar h2{margin:0 0 11px;font-size:10px;font-weight:700;letter-spacing:.15em;
           text-transform:uppercase;color:var(--money)}
 .incar .none{margin:0;font-size:13px;color:var(--ink2);line-height:1.45}
-.incar .figs{display:flex;gap:26px;margin-bottom:11px}
-.incar .figs .k{font-size:9px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;
+.incar .figs{display:flex;gap:24px;margin-bottom:12px}
+.incar .figs .k{font-size:10px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;
                 color:var(--money);opacity:.75}
-.incar .figs .v{font-family:var(--display);font-weight:400;font-size:28px;margin-top:4px}
+.incar .figs .v{font-family:var(--display);font-weight:400;font-size:27px;margin-top:4px}
 .incar .figs .v.money{color:var(--money-deep)}
-.incar .names{display:flex;flex-wrap:wrap;gap:6px}
-.incar .chip{font-size:11.5px;font-weight:650;background:var(--paper);
-             border:1px solid var(--money-line);border-radius:var(--r-pill);padding:4px 10px}
-.incar .warn{margin:11px 0 0;font-size:12.5px;line-height:1.45;color:var(--alert)}
+.incar .names{display:flex;flex-wrap:wrap;gap:8px}
+.incar .chip{font-size:11px;font-weight:600;background:var(--paper);
+             border:1px solid var(--money-line);border-radius:var(--r-pill);padding:4px 12px}
+.incar .warn{margin:11px 0 0;font-size:13px;line-height:1.45;color:var(--alert)}
 .btn.wide{width:100%;margin-bottom:8px}
 
 /* ---- Show: what is actually in front of you -------------------------------
    "In case" has to mean the cards on the table, not stock left at home. */
 .ontable{background:var(--money-soft);border:1px solid var(--money-line);
-         border-radius:var(--r-lg);padding:12px 13px;margin-bottom:12px}
-.ontable .top{display:flex;align-items:baseline;gap:10px;margin-bottom:8px}
+         border-radius:var(--r-lg);padding:12px 12px;margin-bottom:12px}
+.ontable .top{display:flex;align-items:baseline;gap:12px;margin-bottom:8px}
 .ontable h2{margin:0;flex:1;font-size:10px;font-weight:700;letter-spacing:.13em;
             text-transform:uppercase;color:var(--money);opacity:.85}
-.ontable .worth{font-family:var(--display);font-weight:400;font-size:19px;color:var(--money-deep)}
-.ontable .chips{display:flex;flex-wrap:wrap;gap:6px}
-.ontable .chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;
-               font-weight:650;background:var(--paper);border:1px solid var(--money-line);
-               border-radius:var(--r-pill);padding:5px 10px;color:var(--ink)}
+.ontable .worth{font-family:var(--display);font-weight:400;font-size:17px;color:var(--money-deep)}
+.ontable .chips{display:flex;flex-wrap:wrap;gap:8px}
+.ontable .chip{display:inline-flex;align-items:center;gap:8px;font-size:11px;
+               font-weight:600;background:var(--paper);border:1px solid var(--money-line);
+               border-radius:var(--r-pill);padding:4px 12px;color:var(--ink)}
 .ontable .chip b{font-family:var(--mono);font-size:11px;color:var(--money)}
 .ontable .chip.change{border-style:dashed;border-color:var(--line2);color:var(--ink2);
-                      cursor:pointer;font:inherit;font-size:11.5px;font-weight:650;
-                      padding:5px 10px}
+                      cursor:pointer;font:inherit;font-size:11px;font-weight:600;
+                      padding:4px 12px}
 
 /* ---- Book: groups lead ----------------------------------------------------
    A group is what gets carried, packed and totalled, so it is what the Book
    opens on. Its row has to answer three things at a glance: how big, whether
    it is going to the show, and whether anything in it still has no price. */
 .backlink{background:none;border:0;padding:8px 2px 8px 0;margin:-8px 0 2px;
-          cursor:pointer;font:inherit;font-size:14px;font-weight:650;
+          cursor:pointer;font:inherit;font-size:15px;font-weight:600;
           color:var(--ink2);min-height:44px;display:inline-flex;align-items:center}
 .backlink:hover{color:var(--ink)}
 
@@ -806,7 +860,7 @@ textarea#s-name.from-read{background:var(--money-soft);border-color:var(--money-
    390px row the trailing count broke across lines and rendered "3 in / case",
    which reads as a bug. Measuring the name for clipping did not catch it —
    only looking at it did. */
-.grp .s{display:flex;flex-wrap:wrap;align-items:center;gap:6px;row-gap:5px}
+.grp .s{display:flex;flex-wrap:wrap;align-items:center;gap:8px;row-gap:4px}
 .grp .s .ctx{white-space:nowrap}
 
 /* An empty group is a prompt, not a dead end — dashed so it reads as a slot
@@ -838,12 +892,12 @@ textarea#s-name.from-read{background:var(--money-soft);border-color:var(--money-
    The spread between the dials IS the margin, so each dial shows its own
    money underneath it rather than making the dealer hold two percentages in
    their head and do the arithmetic at a table. */
-.dial{margin-top:12px;padding:13px 14px;border-radius:var(--r-lg);
+.dial{margin-top:12px;padding:12px 16px;border-radius:var(--r-lg);
       border:1px solid var(--line);background:var(--paper);box-shadow:var(--sh-1)}
 .dial.money{background:var(--money-soft);border-color:var(--money-line)}
 .dial.accent{background:var(--accent-soft);border-color:var(--accent-line)}
-.dial .top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
-.dial .k{font-size:9.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;
+.dial .top{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.dial .k{font-size:10px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;
          color:var(--mut)}
 .dial.money .k{color:var(--money)}
 .dial.accent .k{color:var(--accent-deep)}
@@ -854,12 +908,12 @@ textarea#s-name.from-read{background:var(--money-soft);border-color:var(--money-
 .dial input[type=range]{width:100%;margin:9px 0 4px;height:44px;background:transparent}
 .dial.money input[type=range]{accent-color:var(--money)}
 .dial.accent input[type=range]{accent-color:var(--accent)}
-.dial .s{font-size:12.5px;color:var(--mut)}
+.dial .s{font-size:13px;color:var(--mut)}
 .dial .s b{color:var(--ink);font-weight:700}
 
 /* Who owes what. One number, the largest thing on the screen, and a colour
    that says which way the money moves. */
-.settle{border-radius:var(--r-xl);padding:16px 17px;border:1px solid var(--line);
+.settle{border-radius:var(--r-xl);padding:16px 16px;border:1px solid var(--line);
         background:var(--paper);box-shadow:var(--sh-1)}
 .settle.them{background:var(--money-soft);border-color:var(--money-edge)}
 .settle.you{background:var(--alert-soft);border-color:var(--alert-line)}
@@ -871,4 +925,57 @@ textarea#s-name.from-read{background:var(--money-soft);border-color:var(--money-
            line-height:1.05}
 .settle.them .v{color:var(--money-deep)}
 .settle.you .v{color:var(--alert)}
-.settle .s{font-size:12.5px;color:var(--mut);margin-top:5px}
+.settle .s{font-size:13px;color:var(--mut);margin-top:4px}
+
+/* ---- patterns that were inline styles ------------------------------------
+   Each of these was repeated JSX styling. A rule that lives here can be seen,
+   compared against its neighbours and changed once; an inline style cannot. */
+.btn.inline{width:auto;display:inline-flex}
+.stackgap{display:grid;gap:var(--s2)}
+.dl.head{font-size:var(--t-md);font-weight:var(--w-med)}
+.dl .sub{font-size:var(--t-sm);font-weight:var(--w-body)}
+.dl.line{font-size:var(--t-sm);margin-top:var(--s1)}
+.bigpct{font-family:var(--display);font-weight:400;font-size:27px;letter-spacing:0}
+
+/* ---- TEXT WRAPS. IT DOES NOT GET CUT OFF. --------------------------------
+   Every card title, read block and subline in this app shows in full.
+   Truncation was the house style and it was wrong: the whole reason to look at
+   a card's text is to judge whether it needs changing, and an ellipsis removes
+   exactly the part you were reading it for. The context is the point.
+
+   Numbers are the one exception — an amount that wraps is unreadable, and
+   `.stat .v` shrinks its type before it will clip a digit. */
+.row .t, .grp .t, .chk .t, .chk .s, .qrow .nm, .packrow .nm,
+.rd .txt, .dlg .card-line .t, .row .s, .row .s .ctx, .stackbar .v{
+  white-space:normal;
+  overflow:visible;
+  text-overflow:clip;
+  overflow-wrap:anywhere;}
+
+/* ---- the read row: text first, at full width -----------------------------
+   The block of text is the thing you are here to READ — it is how you decide
+   whether the card needs editing. Sharing a 390px row with five controls left
+   it about 140px wide, so a real card title wrapped to six lines in a thin
+   column while the buttons took half the row.
+
+   So the text takes a line of its own and the controls sit under it. Every row
+   is two lines tall whether or not the text needs it, and that is the point:
+   one predictable shape beats a row that reflows depending on its contents. */
+.rd .txt{flex:1 1 100%;order:-1;padding-bottom:0;
+         /* Tapping the text is how you start editing it, so it is a target too. */
+         min-height:44px;display:flex;align-items:center}
+
+/* Read-row controls reach 44px like everything else. They were 24–30px, and
+   they are among the most-tapped controls in the app — you curate the read on
+   every card you scan. They stay visually small; the target is padding. The
+   page sweeps never caught this because the read sheet only exists after a
+   photo, so it was never on screen when the audit ran. */
+.rd .tick,.rd .star,.rd .hash,.rd .pen,.rd .x,.rd .undo,.rd .done{
+  min-height:44px;display:inline-flex;align-items:center;justify-content:center;
+}
+.rd .tick,.rd .hash{width:44px}
+.rd .star{min-width:44px}
+.rd .pen,.rd .x{padding-left:var(--s2);padding-right:var(--s2)}
+/* The row is two lines now, so its controls no longer need vertical padding
+   of their own — the line gives them the height. */
+.rd{padding:var(--s2) var(--s3)}

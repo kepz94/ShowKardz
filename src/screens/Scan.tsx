@@ -464,7 +464,7 @@ export function Scan({ go }: { go: (r: Route) => void }) {
         </button>
       </div>
 
-      <button className="btn ghost sm" disabled={busy} style={{ marginTop: 9 }}
+      <button className="btn ghost sm mt2" disabled={busy}
               onClick={() => uploadInput.current?.click()}>
         {photo ? 'Choose a different photo' : 'Upload a photo instead'}
       </button>
@@ -609,7 +609,7 @@ export function Scan({ go }: { go: (r: Route) => void }) {
             <div className="sbody">
               <div className="reads">{ordered.map(sectionRow)}</div>
 
-              <div className="searchprev" style={{ marginTop: 12 }}>
+              <div className="searchprev mt3">
                 <div className="k">Becomes the card name</div>
                 <div className={`v${composedName === '' ? ' muted' : ''}`}>
                   {composedName === '' ? 'Nothing kept' : composedName}

@@ -247,7 +247,7 @@ export function Receipts() {
             }}>×</button>
           </div>
         ) : (
-          <div className="grid2" style={{ marginTop: 13 }}>
+          <div className="grid2 mt3">
             <button className="btn ghost sm" disabled={busy}
                     onClick={() => cameraInput.current?.click()}>
               {busy ? 'Working…' : 'Take a photo'}
@@ -270,7 +270,7 @@ export function Receipts() {
           </div>
         )}
 
-        <button className="btn money" style={{ marginTop: 11 }} disabled={!ready} onClick={save}>
+        <button className="btn money mt3" disabled={!ready} onClick={save}>
           {amountCents ? `Log ${formatCents(amountCents)} expense` : 'Log the expense'}
           <span className="sub">{LABELS[category]}</span>
         </button>

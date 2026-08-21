@@ -125,7 +125,7 @@ function GroupsScreen({
             <div className="s">
               Cards you add land here, ready to search, reprice and sell from.
             </div>
-            <button className="btn sm" style={{ marginTop: 14, width: 'auto', display: 'inline-flex' }}
+            <button className="btn sm inline mt4"
                     onClick={() => go('scan')}>
               Add your first card
             </button>
@@ -158,7 +158,7 @@ function GroupsScreen({
                   </div>
                 ) : hits.map((c) => <CardRow key={c.id} card={c} onEdit={onEdit} />)}
               </div>
-              <button className="btn ghost sm" style={{ marginTop: 12 }} onClick={() => setQuery('')}>
+              <button className="btn ghost sm mt3" onClick={() => setQuery('')}>
                 Back to groups
               </button>
             </>
@@ -239,7 +239,7 @@ function GroupList({ onOpen, onNewGroup }: { onOpen: (id: string) => void; onNew
 
   return (
     <>
-      <p className="lede" style={{ marginTop: 11 }}>
+      <p className="lede mt3">
         {rows.length} {rows.length === 1 ? 'group' : 'groups'} · tap one to see its cards
       </p>
 
@@ -287,7 +287,7 @@ function GroupList({ onOpen, onNewGroup }: { onOpen: (id: string) => void; onNew
         })}
       </div>
 
-      <button className="btn ghost sm" style={{ marginTop: 12 }} onClick={onNewGroup}>
+      <button className="btn ghost sm mt3" onClick={onNewGroup}>
         + New group
       </button>
     </>
@@ -365,12 +365,12 @@ function GroupDetail({
       </div>
 
       {stats.unpricedCount > 0 && (
-        <p className="claim" style={{ marginTop: 9 }}>
+        <p className="claim mt2">
           {stats.unpricedCount} still unpriced, so the total is short.
         </p>
       )}
 
-      <div className="seg" role="group" aria-label="Filter by state" style={{ marginTop: 12 }}>
+      <div className="seg mt3" role="group" aria-label="Filter by state">
         {(['all', 'unpriced', 'available', 'sold'] as Filter[]).map((f) => (
           <button key={f} aria-pressed={filter === f} onClick={() => setFilter(f)}>
             {f === 'all' ? 'All' : f === 'unpriced' ? 'Unpriced' : f === 'available' ? 'In case' : 'Sold'}
@@ -392,7 +392,7 @@ function GroupDetail({
             <div className="t">This group is empty</div>
             <div className="s">Nothing is filed under {ungrouped ? 'no group' : 'this name'} yet.</div>
             {!ungrouped && (
-              <button className="btn sm" style={{ marginTop: 14, width: 'auto', display: 'inline-flex' }}
+              <button className="btn sm inline mt4"
                       onClick={() => setAssigning(true)}>
                 Add a card to this group
               </button>
@@ -408,15 +408,15 @@ function GroupDetail({
 
       {!ungrouped && (
         <>
-          <button className="btn ghost sm" style={{ marginTop: 12 }} onClick={() => setAssigning(true)}>
+          <button className="btn ghost sm mt3" onClick={() => setAssigning(true)}>
             Add cards to this group
           </button>
-          <button className="btn ghost sm" style={{ marginTop: 9 }} onClick={() => onRename(stack!)}>
+          <button className="btn ghost sm mt2" onClick={() => onRename(stack!)}>
             Rename group
           </button>
         </>
       )}
-      <button className="btn ghost sm" style={{ marginTop: 9 }} onClick={onBack}>
+      <button className="btn ghost sm mt2" onClick={onBack}>
         Back to groups
       </button>
     </>
@@ -475,7 +475,7 @@ function AssignCards({ stack, onDone }: { stack: Stack; onDone: () => void }) {
               <div className="s">There is nothing left to add.</div>
             </div>
           </div>
-          <button className="btn ghost sm" style={{ marginTop: 12 }} onClick={onDone}>Back</button>
+          <button className="btn ghost sm mt3" onClick={onDone}>Back</button>
         </>
       ) : (
         <>
@@ -515,7 +515,7 @@ function AssignCards({ stack, onDone }: { stack: Stack; onDone: () => void }) {
                 ? 'Pick some cards'
                 : `File ${picked.size} ${picked.size === 1 ? 'card' : 'cards'} into ${groupName(stack)}`}
             </button>
-            <button className="btn ghost sm" style={{ marginTop: 9 }} onClick={() => onDone()}>Cancel</button>
+            <button className="btn ghost sm mt2" onClick={() => onDone()}>Cancel</button>
           </div>
         </>
       )}
@@ -584,7 +584,7 @@ function NewGroup({ onDone, existing }: {
         <button className="btn" disabled={name.trim() === ''} onClick={submit}>
           {renaming ? 'Save name' : 'Create group'}
         </button>
-        <button className="btn ghost sm" style={{ marginTop: 9 }} onClick={() => onDone()}>Cancel</button>
+        <button className="btn ghost sm mt2" onClick={() => onDone()}>Cancel</button>
       </div>
     </>
   );
@@ -743,7 +743,7 @@ function CardDetail({ card, onDone }: { card: Card; onDone: () => void }) {
               <input id="ng-name" type="text" value={newGroup} autoFocus
                      onChange={(e) => setNewGroup(e.target.value)}
                      placeholder="Saturday table" />
-              <div className="grid2" style={{ marginTop: 11 }}>
+              <div className="grid2 mt3">
                 <button className="btn ghost sm" onClick={() => setNewGroup(null)}>Cancel</button>
                 <button className="btn sm" disabled={newGroup.trim() === ''}
                         onClick={() => {
@@ -786,7 +786,7 @@ function CardDetail({ card, onDone }: { card: Card; onDone: () => void }) {
         Market evidence, not a figure this app can know. Read the last handful, then set yours.
       </p>
 
-      <div className="card" style={{ marginTop: 14 }}>
+      <div className="card mt4">
         <div className="grid2">
           <div>
             <label htmlFor="d-price">Your price</label>

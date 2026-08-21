@@ -87,7 +87,7 @@ export function Show({ go, showId }: { go: (r: Route, id?: string) => void; show
             <div className="s">out of the case</div>
           </div>
         </div>
-        <div style={{ marginTop: 14, display: 'grid', gap: 9 }}>
+        <div className="mt4 stackgap">
           <button className="btn" onClick={() => setDone(null)}>Next sale</button>
           <button className="btn ghost" onClick={() => go('sales')}>Open Sales</button>
         </div>
@@ -110,7 +110,7 @@ export function Show({ go, showId }: { go: (r: Route, id?: string) => void; show
             <div className="s">
               A card can only be sold once it has a price. Price them in the Book and they land here.
             </div>
-            <button className="btn sm" style={{ marginTop: 14, width: 'auto', display: 'inline-flex' }}
+            <button className="btn sm inline mt4"
                     onClick={() => go('collection')}>
               Go to the collection
             </button>
@@ -186,7 +186,7 @@ export function Show({ go, showId }: { go: (r: Route, id?: string) => void; show
                 aria-label="Delete last digit">⌫</button>
       </div>
 
-      <button className="btn" style={{ marginTop: 11 }} disabled={!match || alreadyInCart}
+      <button className="btn mt3" disabled={!match || alreadyInCart}
               onClick={() => {
                 if (!match || alreadyInCart) return;
                 setCart((c) => [...c, match.id]);

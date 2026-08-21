@@ -94,7 +94,7 @@ export function Shows({ go, onOpen }: {
       )}
 
       {shows.length === 0 && (
-        <div className="empty dashed" style={{ marginTop: 14 }}>
+        <div className="empty dashed mt4">
           <div className="t">No shows yet</div>
           <div className="s">
             Add one and it walks you through getting ready, selling, and closing out.
@@ -107,7 +107,7 @@ export function Shows({ go, onOpen }: {
         * math, and routing it through an invented show would leave junk in the
         * list above forever.
         */}
-      <h2 style={{ marginTop: 26 }}><span>Not at a show</span></h2>
+      <h2 className="mt6"><span>Not at a show</span></h2>
       <button className="grp" onClick={() => go('shows', 'calculator')}>
         <span className="cnt">$</span>
         <span className="mid">
@@ -197,7 +197,7 @@ function NewShow({ onDone }: { onDone: (createdId?: string) => void }) {
         <button className="btn" disabled={name.trim() === ''} onClick={submit}>
           Start getting ready
         </button>
-        <button className="btn ghost sm" style={{ marginTop: 9 }} onClick={() => onDone()}>
+        <button className="btn ghost sm mt2" onClick={() => onDone()}>
           Cancel
         </button>
       </div>

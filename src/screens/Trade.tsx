@@ -118,14 +118,14 @@ export function Trade({ showId, onDone }: { showId?: string; onDone: () => void 
             <div className="s">scan them in when stickered</div>
           </div>
         </div>
-        <p className="claim" style={{ marginTop: 11 }}>
+        <p className="claim mt3">
           What you took in is on the deal, not in the book yet — those cards have no
           sticker numbers. Scan them like any other card and they join the collection.
         </p>
-        <button className="btn" style={{ marginTop: 14 }} onClick={() => setDone(null)}>
+        <button className="btn mt4" onClick={() => setDone(null)}>
           Another trade
         </button>
-        <button className="btn ghost sm" style={{ marginTop: 9 }} onClick={onDone}>
+        <button className="btn ghost sm mt2" onClick={onDone}>
           Done trading
         </button>
       </>
@@ -167,14 +167,14 @@ export function Trade({ showId, onDone }: { showId?: string; onDone: () => void 
         <button className="key sm" onClick={() => setEntry((e) => e.slice(0, -1))}>⌫</button>
       </div>
 
-      <button className="btn" style={{ marginTop: 10 }}
+      <button className="btn mt3"
               disabled={!match || sold || alreadyIn} onClick={addMine}>
         Add to your side
       </button>
 
       {mineCards.length > 0 && (
         <>
-          <div className="list" style={{ marginTop: 12 }}>
+          <div className="list mt3">
             {mineCards.map((c) => (
               <div className="row" key={c.id}>
                 <span className="num">{c.number}</span>
@@ -194,7 +194,7 @@ export function Trade({ showId, onDone }: { showId?: string; onDone: () => void 
       )}
 
       {/* ---- their side ---- */}
-      <h2 style={{ marginTop: 22 }}>
+      <h2 className="mt5">
         <span>Theirs, coming in</span><span className="count">{theirs.length}</span>
       </h2>
 
@@ -215,7 +215,7 @@ export function Trade({ showId, onDone }: { showId?: string; onDone: () => void 
             </div>
           </div>
         </div>
-        <button className="btn ghost sm" style={{ marginTop: 11 }}
+        <button className="btn ghost sm mt3"
                 disabled={dollarsToCents(tValue) == null} onClick={addTheirs}>
           Add to their side
         </button>
@@ -226,7 +226,7 @@ export function Trade({ showId, onDone }: { showId?: string; onDone: () => void 
 
       {theirs.length > 0 && (
         <>
-          <div className="list" style={{ marginTop: 12 }}>
+          <div className="list mt3">
             {theirs.map((line, i) => (
               <div className="row" key={`${line.title}-${i}`}>
                 <span className="mid"><span className="t">{line.title}</span></span>
@@ -245,7 +245,7 @@ export function Trade({ showId, onDone }: { showId?: string; onDone: () => void 
       {/* ---- the settlement ---- */}
       {(mineCards.length > 0 || theirs.length > 0) && (
         <>
-          <h2 style={{ marginTop: 22 }}><span>Who owes what</span></h2>
+          <h2 className="mt5"><span>Who owes what</span></h2>
           <div className={`settle ${t.owed}`}>
             <div className="k">
               {t.owed === 'even' ? 'Even trade'
@@ -258,7 +258,7 @@ export function Trade({ showId, onDone }: { showId?: string; onDone: () => void 
           </div>
 
           {floors.breached && (
-            <p className="claim bad" style={{ marginTop: 10 }}>
+            <p className="claim bad mt3">
               {formatCents(floors.shortfallCents)} under your floor. A trade is the
               easiest way to hand a card over for less than you said you would take.
             </p>

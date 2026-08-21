@@ -99,7 +99,7 @@ export function Sales({ go }: { go: (r: Route, id?: string) => void }) {
             })}
           </div>
           {unattached.dealCount > 0 && (
-            <p className="claim" style={{ marginTop: 9 }}>
+            <p className="claim mt2">
               Plus {formatCents(unattached.takenCents)} from {unattached.dealCount}{' '}
               {unattached.dealCount === 1 ? 'deal' : 'deals'} not at a show.
             </p>
@@ -117,17 +117,17 @@ export function Sales({ go }: { go: (r: Route, id?: string) => void }) {
           <div className="empty">
             <div className="t">No sales yet</div>
             <div className="s">Deals you ring up on the Show screen land here, card by card.</div>
-            <button className="btn sm" style={{ marginTop: 14, width: 'auto', display: 'inline-flex' }}
+            <button className="btn sm inline mt4"
                     onClick={() => go('shows')}>
               Go to Show
             </button>
           </div>
         ) : deals.map((d) => (
           <div key={d.id} style={{ padding: '14px 15px', borderTop: '1px solid var(--line)' }}>
-            <div className="dl" style={{ fontWeight: 650, fontSize: 15 }}>
+            <div className="dl head">
               <span>
                 {new Date(d.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                <span className="muted" style={{ fontWeight: 500, fontSize: 13 }}>
+                <span className="muted sub">
                   {' · '}{d.lines.length} {d.lines.length === 1 ? 'card' : 'cards'}
                 </span>
               </span>
@@ -138,7 +138,7 @@ export function Sales({ go }: { go: (r: Route, id?: string) => void }) {
               {pctFromAmount(d.agreedCents, d.subtotalCents)}%
             </div>
             {d.lines.map((l) => (
-              <div className="dl b" key={l.cardId} style={{ fontSize: 13, marginTop: 5 }}>
+              <div className="dl b line" key={l.cardId}>
                 <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis',
                                whiteSpace: 'nowrap' }}>
                   <span style={{ fontFamily: 'var(--mono)', color: 'var(--ink2)' }}>{l.number}</span>
@@ -164,7 +164,7 @@ export function Sales({ go }: { go: (r: Route, id?: string) => void }) {
         <div className="grid2">
           <div>
             <label>App says</label>
-            <div style={{ fontSize: 27, fontWeight: 680, letterSpacing: '-.03em' }}>
+            <div className="bigpct">
               {inCase.length}
             </div>
           </div>

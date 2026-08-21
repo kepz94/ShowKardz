@@ -100,17 +100,17 @@ function ShowTime({ show, go, onBack, onClose }: {
         ? <Register go={go} showId={show.id} />
         : <Trade showId={show.id} onDone={() => setKind('cash')} />}
 
-      <h2 style={{ marginTop: 26 }}><span>End of the day</span></h2>
+      <h2 className="mt6"><span>End of the day</span></h2>
       {confirming ? (
         <div className="card">
-          <p className="lede" style={{ marginBottom: 12 }}>
+          <p className="lede mb3">
             Close <b>{show.name}</b>? It stops being the table and becomes the record —
             {books.dealCount === 0
               ? ' nothing has been sold at it yet.'
               : ` ${books.dealCount} ${books.dealCount === 1 ? 'deal' : 'deals'}, ${formatCents(books.takenCents)}.`}
           </p>
           <button className="btn money" onClick={onClose}>Close the show</button>
-          <button className="btn ghost sm" style={{ marginTop: 9 }}
+          <button className="btn ghost sm mt2"
                   onClick={() => setConfirming(false)}>Not yet</button>
         </div>
       ) : (
@@ -176,7 +176,7 @@ function PostShow({ show, onBack }: { show: Show; onBack: () => void }) {
         </div>
       </div>
 
-      <p className="claim" style={{ marginTop: 9 }}>
+      <p className="claim mt2">
         {books.cardsSold} of {packed.cardCount + books.cardsSold} cards carried went out.
       </p>
 
@@ -201,7 +201,7 @@ function PostShow({ show, onBack }: { show: Show; onBack: () => void }) {
         * discount rate — a number that means nothing, presented as if it did.
         */}
       {books.askedCents > 0 && (
-        <p className="claim" style={{ marginTop: 11 }}>
+        <p className="claim mt3">
           Sold at {Math.round((books.takenCents / books.askedCents) * 100)}% of what you
           asked for them.
         </p>
@@ -254,7 +254,7 @@ function PostShow({ show, onBack }: { show: Show; onBack: () => void }) {
         */}
       <h2>Case audit</h2>
       <div className="card">
-        <div className="tot two" style={{ marginBottom: 12 }}>
+        <div className="tot two mb3">
           <div>
             <div className="k">Should be left</div>
             <div className="v">{left.length}</div>
@@ -273,7 +273,7 @@ function PostShow({ show, onBack }: { show: Show; onBack: () => void }) {
                  onChange={(e) => setCounted(e.target.value)} />
         </div>
         {missing != null && (
-          <p className={`claim${missing > 0 ? ' bad' : ''}`} style={{ marginTop: 10 }}>
+          <p className={`${`claim${missing > 0 ? ' bad' : ''}`} mt3`}>
             {missing === 0
               ? 'Everything is accounted for.'
               : missing > 0
