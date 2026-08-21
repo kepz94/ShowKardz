@@ -194,6 +194,11 @@ body{
    layout gets shoved sideways. Nothing is allowed to push the page wider. */
 .app{overflow-x:clip}
 img,svg,video,canvas{max-width:100%}
+
+/* The browser's own `b{font-weight:bolder}` resolves to 900 inside anything set
+   at 600, which is most of this app — a ninth weight nobody chose, on a face
+   that has no 900. Pin it to the scale. */
+b,strong{font-weight:var(--w-bold)}
 @media (prefers-reduced-motion:reduce){
   *{animation-duration:.001ms !important;transition-duration:.001ms !important}
 }
@@ -361,8 +366,13 @@ button.row:hover{background:var(--raised)}
           white-space:nowrap;flex:none}
 .row .amt .was{display:block;font-size:11px;font-weight:400;color:var(--mut);
                text-decoration:line-through}
+/* 44px is the whole target, not the glyph: this is the button that takes a
+   card back off the deal, pressed one-handed with a buyer waiting. It sat at
+   30px until the audit measured it. */
 .row .x{background:none;border:0;color:var(--line2);font-size:22px;line-height:1;
-        padding:4px 0 4px 6px;cursor:pointer;flex:none;width:auto}
+        padding:0 0 0 6px;cursor:pointer;flex:none;width:auto;
+        min-height:44px;min-width:44px;
+        display:flex;align-items:center;justify-content:center}
 .row .x:hover{color:var(--alert)}
 .thumb{width:42px;height:42px;border-radius:var(--r-sm);object-fit:cover;flex:none;
        border:1px solid var(--line2);background:var(--bg)}
@@ -530,7 +540,8 @@ input[type=range]{width:100%;margin:12px 0 0;accent-color:var(--ink);height:28px
                       font-size:var(--t-control)}
 .stackbar .ch{flex:none;background:var(--paper);border:1px solid var(--money-line);
               border-radius:var(--r-pill);color:var(--money);font-size:13px;font-weight:600;
-              padding:8px 16px;cursor:pointer}
+              padding:0 16px;min-height:44px;cursor:pointer;
+              display:inline-flex;align-items:center}
 
 /* ---- the console: number + camera --------------------------------------- */
 .console{background:var(--band);border-radius:var(--r-lg);padding:16px 16px 15px;

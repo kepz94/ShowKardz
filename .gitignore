@@ -1,5 +1,6 @@
 node_modules/
 dist/
+dist-audit/
 *.local
 .DS_Store
 

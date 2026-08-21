@@ -28,6 +28,17 @@ jobs:
       # The gate has to be able to fail the deploy, so the money math and the
       # duplicate-number rule run before anything ships.
       - run: npm test
+      # The UI audit needs a browser. --with-deps pulls the system libraries
+      # Chromium needs on a bare runner; without it the launch fails and the
+      # audit exits 2, which reads as "could not run", not as a pass.
+      - run: npx playwright install --with-deps chromium
+      # Builds the app with a dummy Vision key, then walks every screen at
+      # 390x844. Fails the deploy on clipped text, a tap target under 44px, a
+      # control that would make iOS zoom, or type off the scale.
+      - run: npm run audit:ui
+      # And proves the checks still fire when the thing they watch is broken.
+      # A suite that cannot fail would pass this gate forever.
+      - run: npm run audit:ui -- --self-test --keep
       # The Vision key is injected here rather than committed. It still ends up
       # in the published bundle — a browser call cannot hide it — so what
       # actually protects it is the HTTP-referrer restriction and the Vision
