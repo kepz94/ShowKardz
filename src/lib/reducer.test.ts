@@ -473,3 +473,72 @@ describe('shows — the lifecycle', () => {
     expect(db.shows[0]!.deletedAt).toBe(T2);
   });
 });
+
+describe('deal/trade', () => {
+  const withPriced = (): DB => {
+    let db = reducer(EMPTY_DB, { type: 'card/add', id: 'c1', number: '455', name: 'Edwards', now: NOW });
+    db = reducer(db, { type: 'card/add', id: 'c2', number: '456', name: 'Wemby', now: NOW });
+    db = reducer(db, { type: 'card/price', cardId: 'c1', priceCents: 10000, now: NOW });
+    db = reducer(db, { type: 'card/price', cardId: 'c2', priceCents: 5000, now: NOW });
+    return db;
+  };
+
+  const trade = (db: DB, over: Record<string, unknown> = {}) => reducer(db, {
+    type: 'deal/trade', id: 'tr1', cardIds: ['c1'],
+    yoursCents: 9000, yoursPct: 90,
+    incoming: [{ title: 'Their rookie', askCents: 5000 }], theirsPct: 70,
+    cashDeltaCents: 5500, now: NOW, ...over,
+  } as never);
+
+  it('marks your side sold, exactly as a cash sale does', () => {
+    const db = trade(withPriced());
+    expect(liveCards(db).find((c) => c.id === 'c1')!.status).toBe('sold');
+  });
+
+  it('records what came in without creating it as inventory', () => {
+    // Cards taken in a trade have no sticker yet. Inventing numbers would put
+    // cards in the book that cannot be found in the case.
+    const db = trade(withPriced());
+    expect(db.cards).toHaveLength(2);
+    expect(db.deals[0]!.incoming).toEqual([{ title: 'Their rookie', askCents: 5000 }]);
+  });
+
+  it('keeps both dials, so the spread reads back later', () => {
+    const d = trade(withPriced()).deals[0]!;
+    expect(d.type).toBe('trade');
+    expect(d.yoursPct).toBe(90);
+    expect(d.theirsPct).toBe(70);
+    expect(d.cashDeltaCents).toBe(5500);
+  });
+
+  it('realizes what YOUR side went out at', () => {
+    const d = trade(withPriced()).deals[0]!;
+    expect(d.agreedCents).toBe(9000);
+    expect(d.subtotalCents).toBe(10000);
+    expect(d.lines[0]!.realizedCents).toBe(9000);
+  });
+
+  it('splits across a bundle by ask weight, like every other deal', () => {
+    const d = trade(withPriced(), { cardIds: ['c1', 'c2'], yoursCents: 13500 }).deals[0]!;
+    expect(d.lines.map((l) => l.realizedCents)).toEqual([9000, 4500]);
+  });
+
+  it('refuses a trade whose side is already sold — the double-tap guard', () => {
+    const once = trade(withPriced());
+    expect(trade(once, { id: 'tr2' }).deals).toHaveLength(1);
+  });
+
+  it('stamps the show it happened at', () => {
+    expect(trade(withPriced(), { showId: 'sh1' }).deals[0]!.showId).toBe('sh1');
+  });
+
+  it('leaves a cash sale untouched by any of this', () => {
+    const db = reducer(withPriced(), {
+      type: 'deal/record', id: 'd1', cardIds: ['c1'], agreedCents: 8500, now: NOW,
+    });
+    const d = db.deals[0]!;
+    expect(d.type).toBe('cash');
+    expect(d.incoming).toBeUndefined();
+    expect(d.cashDeltaCents).toBeUndefined();
+  });
+});

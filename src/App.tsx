@@ -5,6 +5,7 @@ import { Collection } from './screens/Collection';
 import { Shows } from './screens/Shows';
 import { ShowDetail } from './screens/ShowDetail';
 import { Show as Register } from './screens/Show';
+import { Trade } from './screens/Trade';
 import { Sales } from './screens/Sales';
 import { Receipts } from './screens/Receipts';
 import { ScanIcon, CardsIcon, ShowIcon, SalesIcon, ReceiptsIcon } from './components/Icons';
@@ -36,6 +37,25 @@ const TABS: { route: Route; label: string; Icon: () => JSX.Element }[] = [
  * deal rung up here carries no showId.
  */
 const CALCULATOR = 'calculator';
+
+/**
+ * The standalone register: the same cash and trade math with no show attached.
+ * Its deals carry no showId, so they count toward Sales and toward no show.
+ */
+function Calculator({ go }: { go: (r: Route, id?: string) => void }) {
+  const [kind, setKind] = useState<'cash' | 'trade'>('cash');
+  return (
+    <>
+      <div className="seg" role="group" aria-label="Cash sale or trade">
+        <button aria-pressed={kind === 'cash'} onClick={() => setKind('cash')}>Cash</button>
+        <button aria-pressed={kind === 'trade'} onClick={() => setKind('trade')}>Trade</button>
+      </div>
+      {kind === 'cash'
+        ? <Register go={go} />
+        : <Trade onDone={() => setKind('cash')} />}
+    </>
+  );
+}
 
 /**
  * Hash routing so a cold start lands where the dealer was. iOS kills PWA
@@ -77,7 +97,7 @@ export function App() {
         {route === 'shows' && loc.id === CALCULATOR && (
           <>
             <button className="backlink" onClick={() => go('shows')}>← Shows</button>
-            <Register go={go} />
+            <Calculator go={go} />
           </>
         )}
         {route === 'shows' && loc.id != null && loc.id !== CALCULATOR && (

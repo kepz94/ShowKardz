@@ -57,3 +57,61 @@ describe('bookSummary', () => {
     });
   });
 });
+
+describe('bookSummary scoped to one show', () => {
+  const atShow = (cents: number, showId?: string): Deal => ({
+    ...deal(cents), id: `d-${cents}-${showId ?? 'none'}`, showId,
+  });
+  const cost = (cents: number, showId?: string): Receipt => ({
+    ...receipt(cents), id: `r-${cents}-${showId ?? 'none'}`, showId,
+  });
+
+  it('totals only the deals rung up at that show', () => {
+    const d = db([atShow(5000, 'sh1'), atShow(3000, 'sh1'), atShow(9999, 'sh2')], []);
+    expect(bookSummary(d, 'sh1').takenCents).toBe(8000);
+  });
+
+  it('totals only the expenses charged to that show', () => {
+    const d = db([], [cost(4000, 'sh1'), cost(1000, 'sh2'), cost(2500)]);
+    expect(bookSummary(d, 'sh1').spentCents).toBe(4000);
+  });
+
+  it('nets the show\u2019s own takings against its own costs', () => {
+    // A table fee is incurred BY the show. Leaving it out makes the show's
+    // profit "takings with no costs", which is the most flattering possible lie.
+    const d = db([atShow(10000, 'sh1')], [cost(4000, 'sh1'), cost(9999, 'sh2')]);
+    const s = bookSummary(d, 'sh1');
+    expect(s.spentCents).toBe(4000);
+    expect(s.profitCents).toBe(6000);
+  });
+
+  it('still totals EVERYTHING when no show is named', () => {
+    // Sales is the whole business: a calculator sale and a standing cost count.
+    const d = db([atShow(5000, 'sh1'), atShow(4000)], [cost(1000, 'sh1'), cost(500)]);
+    const s = bookSummary(d);
+    expect(s.takenCents).toBe(9000);
+    expect(s.spentCents).toBe(1500);
+  });
+
+  it('leaves a deal with no show out of every show', () => {
+    const d = db([atShow(5000, 'sh1'), atShow(4000)], []);
+    expect(bookSummary(d, 'sh1').takenCents).toBe(5000);
+  });
+
+  it('reports zeros for a show with nothing against it', () => {
+    const s = bookSummary(db([atShow(5000, 'sh1')], [cost(100, 'sh1')]), 'sh-none');
+    expect(s.takenCents).toBe(0);
+    expect(s.spentCents).toBe(0);
+    expect(s.profitCents).toBe(0);
+    expect(s.byCategory).toEqual([]);
+  });
+
+  it('breaks a show\u2019s costs down by category, biggest first', () => {
+    const d = db([], [
+      { ...cost(1000, 'sh1'), category: 'travel' },
+      { ...cost(4000, 'sh1'), category: 'table' },
+      { ...cost(9999, 'sh2'), category: 'supplies' },
+    ]);
+    expect(bookSummary(d, 'sh1').byCategory.map((c) => c.category)).toEqual(['table', 'travel']);
+  });
+});

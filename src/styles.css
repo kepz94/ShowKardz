@@ -471,6 +471,8 @@ input[type=range]{width:100%;margin:12px 0 0;accent-color:var(--ink);height:28px
 input.from-read{background:var(--money-soft);border-color:var(--money-line);
                 color:var(--money);font-weight:650}
 .claim.bad{color:var(--alert);font-weight:600}
+/* A negative profit is a real answer and is shown as one, not hidden. */
+.grp .amt.bad{color:var(--alert)}
 
 /* The sync bar's sign-in was a 27px target — under the 44px floor this app
    holds everywhere else, and it is the control a stranded dealer needs most. */
@@ -825,7 +827,48 @@ textarea#s-name.from-read{background:var(--money-soft);border-color:var(--money-
 
 /* The claim line, when what it claims is bad news. */
 .claim.bad{color:var(--alert);font-weight:600}
+/* A negative profit is a real answer and is shown as one, not hidden. */
+.grp .amt.bad{color:var(--alert)}
 
 /* The sync bar's sign-in was a 27px target — under the 44px floor this app
    holds everywhere else, and it is the control a stranded dealer needs most. */
 .syncbar .link{min-height:44px;display:inline-flex;align-items:center;padding:0 4px}
+
+/* ---- trade: two piles, two dials -----------------------------------------
+   The spread between the dials IS the margin, so each dial shows its own
+   money underneath it rather than making the dealer hold two percentages in
+   their head and do the arithmetic at a table. */
+.dial{margin-top:12px;padding:13px 14px;border-radius:var(--r-lg);
+      border:1px solid var(--line);background:var(--paper);box-shadow:var(--sh-1)}
+.dial.money{background:var(--money-soft);border-color:var(--money-line)}
+.dial.accent{background:var(--accent-soft);border-color:var(--accent-line)}
+.dial .top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.dial .k{font-size:9.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;
+         color:var(--mut)}
+.dial.money .k{color:var(--money)}
+.dial.accent .k{color:var(--accent-deep)}
+.dial .pct{font-family:var(--display);font-weight:400;font-size:22px}
+.dial.money .pct{color:var(--money-deep)}
+.dial.accent .pct{color:var(--accent-deep)}
+/* 44px of grab area: this gets dragged one-handed with a buyer waiting. */
+.dial input[type=range]{width:100%;margin:9px 0 4px;height:44px;background:transparent}
+.dial.money input[type=range]{accent-color:var(--money)}
+.dial.accent input[type=range]{accent-color:var(--accent)}
+.dial .s{font-size:12.5px;color:var(--mut)}
+.dial .s b{color:var(--ink);font-weight:700}
+
+/* Who owes what. One number, the largest thing on the screen, and a colour
+   that says which way the money moves. */
+.settle{border-radius:var(--r-xl);padding:16px 17px;border:1px solid var(--line);
+        background:var(--paper);box-shadow:var(--sh-1)}
+.settle.them{background:var(--money-soft);border-color:var(--money-edge)}
+.settle.you{background:var(--alert-soft);border-color:var(--alert-line)}
+.settle .k{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+           color:var(--mut)}
+.settle.them .k{color:var(--money)}
+.settle.you .k{color:var(--alert)}
+.settle .v{font-family:var(--display);font-weight:400;font-size:34px;margin-top:4px;
+           line-height:1.05}
+.settle.them .v{color:var(--money-deep)}
+.settle.you .v{color:var(--alert)}
+.settle .s{font-size:12.5px;color:var(--mut);margin-top:5px}

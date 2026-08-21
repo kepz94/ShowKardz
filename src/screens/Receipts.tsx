@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStore, newId, nowIso } from '../lib/store';
+import { currentShow, showsByDate } from '../lib/shows';
+import { prettyDate } from './Shows';
 import { dollarsToCents, formatCents } from '../lib/money';
 import { bookSummary } from '../lib/books';
 import { liveReceipts } from '../lib/live';
@@ -23,6 +25,24 @@ export function Receipts() {
   const { db, dispatch } = useStore();
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState<ExpenseCategory>('table');
+  /**
+   * Which show this expense belongs to, '' for none.
+   *
+   * Defaults to the show you are on, because the overwhelming case is a table
+   * fee paid on arrival at the show you are standing in. An expense with no
+   * show is a standing business cost and stays out of every show's profit.
+   */
+  const [showId, setShowId] = useState('');
+
+  /*
+   * Shows worth charging an expense to: everything still open, plus the most
+   * recent closed one — a receipt is often logged the evening after, and the
+   * show it belongs to has already been closed out by then.
+   */
+  const shows = showsByDate(db);
+  const open = shows.filter((sh) => sh.phase !== 'done');
+  const lastClosed = shows.filter((sh) => sh.phase === 'done').slice(-1);
+  const chargeable = [...open, ...lastClosed];
   const [note, setNote] = useState('');
   const [photo, setPhoto] = useState<{ blob: Blob; url: string; source: PhotoSource } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -43,6 +63,11 @@ export function Receipts() {
   }, [db.receipts.length]);
 
   const s = bookSummary(db);
+  /* Preselect the show you are on. Runs on id change only, so it never
+     overwrites a choice the dealer made by hand. */
+  const currentId = currentShow(db)?.id;
+  useEffect(() => { if (currentId) setShowId(currentId); }, [currentId]);
+
   const amountCents = dollarsToCents(amount);
   const ready = amountCents != null && amountCents > 0 && !busy;
 
@@ -87,7 +112,7 @@ export function Receipts() {
 
     dispatch({
       type: 'receipt/add', id: newId(), amountCents, category,
-      note: note.trim(), photoId, now: nowIso(),
+      note: note.trim(), photoId, showId: showId || undefined, now: nowIso(),
     });
 
     if (photo) URL.revokeObjectURL(photo.url);
@@ -158,6 +183,29 @@ export function Receipts() {
             </select>
           </div>
         </div>
+
+        {/*
+          * Only when there are shows to charge it to. A picker with one dead
+          * option is a control that teaches the dealer to ignore controls.
+          */}
+        {chargeable.length > 0 && (
+          <div className="field">
+            <label htmlFor="r-show">Charge it to</label>
+            <select id="r-show" value={showId} onChange={(e) => setShowId(e.target.value)}>
+              <option value="">No show — a standing cost</option>
+              {chargeable.map((sh) => (
+                <option key={sh.id} value={sh.id}>
+                  {sh.name} · {prettyDate(sh.date)}
+                </option>
+              ))}
+            </select>
+            <p className="claim">
+              {showId === ''
+                ? 'Counts in Sales, and against no show.'
+                : 'Comes off that show\u2019s profit, where it was actually spent.'}
+            </p>
+          </div>
+        )}
 
         <div className="field">
           <label htmlFor="r-note">Note <span className="muted">(optional)</span></label>

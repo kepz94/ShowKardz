@@ -18,6 +18,11 @@
  * become a different screen.
  *
  * Everything below is derived on call. No show stores a total.
+ *
+ * WHAT A SHOW MADE lives in lib/books.ts, not here: `bookSummary(db, showId)`
+ * scopes the same figures Sales already uses. It was briefly duplicated here as
+ * `showBooks`, which meant two definitions of "asked" that could drift apart —
+ * one off the deal lines, one off the stored subtotal.
  */
 import type { Card, DB, Show, ShowPhase } from '../types';
 import { liveCards } from './cards';
@@ -71,41 +76,6 @@ export function showCards(db: DB, showId: string): Card[] {
 /** Cards packed for this show that could still be sold at it. */
 export function showSellable(db: DB, showId: string): Card[] {
   return showCards(db, showId).filter((c) => c.status === 'available');
-}
-
-export interface ShowBooks {
-  takenCents: number;
-  /**
-   * What was asked for the cards that ACTUALLY SOLD, in cents.
-   *
-   * This is the denominator of the day's discount rate, and it deliberately
-   * excludes stock that never left the case. Dividing takings by the whole
-   * case value answers a question nobody asked and reads as a discount rate,
-   * which is the sort of laundered number Principle 4 exists to prevent.
-   * Zero when nothing sold, so a caller must guard before dividing.
-   */
-  askedCents: number;
-  dealCount: number;
-  cardsSold: number;
-}
-
-/**
- * What one show made.
- *
- * Scoped by `deal.showId`, so a deal rung up on the standalone calculator — or
- * before shows existed — counts toward the Sales totals and toward no show.
- * Cards sold comes off the LINES: one deal can carry a bundle, and counting
- * deals would under-report the case by exactly the amount that matters.
- */
-export function showBooks(db: DB, showId: string): ShowBooks {
-  const deals = db.deals.filter((d) => d.showId === showId);
-  const lines = deals.flatMap((d) => d.lines);
-  return {
-    takenCents: deals.reduce((sum, d) => sum + d.agreedCents, 0),
-    askedCents: lines.reduce((sum, l) => sum + l.askCents, 0),
-    dealCount: deals.length,
-    cardsSold: lines.length,
-  };
 }
 
 /**

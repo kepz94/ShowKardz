@@ -28,12 +28,25 @@ export interface BookSummary {
   byCategory: CategoryTotal[];
 }
 
-export function bookSummary(db: DB): BookSummary {
-  const takenCents = db.deals.reduce((sum, d) => sum + d.agreedCents, 0);
-  const askedCents = db.deals.reduce((sum, d) => sum + d.subtotalCents, 0);
-  const cardsSold = db.deals.reduce((sum, d) => sum + d.lines.length, 0);
+/**
+ * The books, for the whole business or for one show.
+ *
+ * Pass a showId and both sides are scoped to it: only deals rung up there, and
+ * only expenses charged to it. That pairing is the point — a table fee is
+ * incurred BY a show, and totalling a show's takings without its costs is the
+ * most flattering possible lie about how the day went.
+ *
+ * With no showId this is the whole business, which is what Sales is: a
+ * calculator sale and a standing cost both belong there and to no show.
+ */
+export function bookSummary(db: DB, showId?: string): BookSummary {
+  const deals = showId == null ? db.deals : db.deals.filter((d) => d.showId === showId);
+  const takenCents = deals.reduce((sum, d) => sum + d.agreedCents, 0);
+  const askedCents = deals.reduce((sum, d) => sum + d.subtotalCents, 0);
+  const cardsSold = deals.reduce((sum, d) => sum + d.lines.length, 0);
   // Tombstoned expenses are gone as far as the books are concerned.
-  const receipts = liveReceipts(db.receipts);
+  const allReceipts = liveReceipts(db.receipts);
+  const receipts = showId == null ? allReceipts : allReceipts.filter((r) => r.showId === showId);
   const spentCents = receipts.reduce((sum, r) => sum + r.amountCents, 0);
 
   const totals = new Map<ExpenseCategory, number>();
@@ -50,7 +63,7 @@ export function bookSummary(db: DB): BookSummary {
     askedCents,
     spentCents,
     profitCents: takenCents - spentCents,
-    dealCount: db.deals.length,
+    dealCount: deals.length,
     cardsSold,
     byCategory,
   };

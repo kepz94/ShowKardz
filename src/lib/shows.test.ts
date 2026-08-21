@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { EMPTY_DB, type Card, type DB, type Deal, type Show } from '../types';
+import { EMPTY_DB, type Card, type DB, type Show } from '../types';
 import {
-  currentShow, liveShows, nextPhase, showBooks, showCards, showLeftInCase, showsByDate,
+  currentShow, liveShows, nextPhase, showCards, showLeftInCase, showsByDate,
 } from './shows';
 
 const T = '2026-08-19T10:00:00.000Z';
@@ -14,10 +14,6 @@ const show = (over: Partial<Show> = {}): Show => ({
 const card = (id: string, stackId: string | undefined, over: Partial<Card> = {}): Card => ({
   id, number: id, name: `Card ${id}`, stackId, status: 'available', priceCents: 1000,
   createdAt: T, updatedAt: T, ...over,
-});
-
-const deal = (id: string, agreedCents: number, showId?: string): Deal => ({
-  id, type: 'cash', lines: [], subtotalCents: agreedCents, agreedCents, showId, createdAt: T,
 });
 
 const db = (over: Partial<DB>): DB => ({ ...EMPTY_DB, ...over });
@@ -109,62 +105,6 @@ describe('showCards', () => {
 
   it('is empty for a show id that does not exist', () => {
     expect(showCards(base, 'nope')).toEqual([]);
-  });
-});
-
-describe('showBooks', () => {
-  it('totals only the deals rung up at that show', () => {
-    const d = db({
-      shows: [show()],
-      deals: [deal('d1', 5000, 's1'), deal('d2', 3000, 's1'), deal('d3', 9999, 's2')],
-    });
-    const b = showBooks(d, 's1');
-    expect(b.takenCents).toBe(8000);
-    expect(b.dealCount).toBe(2);
-  });
-
-  it('leaves out a deal with no show — the standalone calculator is not a show', () => {
-    const d = db({ shows: [show()], deals: [deal('d1', 5000, 's1'), deal('d2', 4000)] });
-    expect(showBooks(d, 's1').takenCents).toBe(5000);
-  });
-
-  it('reports zeros for a show that sold nothing rather than throwing', () => {
-    expect(showBooks(db({ shows: [show()] }), 's1'))
-      .toEqual({ takenCents: 0, askedCents: 0, dealCount: 0, cardsSold: 0 });
-  });
-
-  it('totals what was ASKED for the cards actually sold', () => {
-    // The discount rate is realized-against-asked ON THE SOLD CARDS. Dividing
-    // takings by the whole case value mixes in stock that never left the case
-    // and produces a number that means nothing.
-    const d = db({
-      shows: [show()],
-      deals: [
-        { ...deal('d1', 10200, 's1'), lines: [
-          { cardId: 'c1', number: '455', title: 'A', askCents: 12000, realizedCents: 10200 },
-        ] },
-      ],
-    });
-    const b = showBooks(d, 's1');
-    expect(b.askedCents).toBe(12000);
-    expect(Math.round((b.takenCents / b.askedCents) * 100)).toBe(85);
-  });
-
-  it('reports asked as zero when nothing sold, so no caller divides by it blindly', () => {
-    expect(showBooks(db({ shows: [show()] }), 's1').askedCents).toBe(0);
-  });
-
-  it('counts cards sold from the deal lines, not from the deal count', () => {
-    const d = db({
-      shows: [show()],
-      deals: [
-        { ...deal('d1', 5000, 's1'), lines: [
-          { cardId: 'c1', number: '1', title: 'A', askCents: 3000, realizedCents: 2500 },
-          { cardId: 'c2', number: '2', title: 'B', askCents: 3000, realizedCents: 2500 },
-        ] },
-      ],
-    });
-    expect(showBooks(d, 's1').cardsSold).toBe(2);
   });
 });
 

@@ -6,7 +6,7 @@
  * The reducer is pure: ids and timestamps arrive on the action rather than being
  * generated here, so every transition is reproducible in a test.
  */
-import type { Card, DB, Deal, DealLine, ExpenseCategory, Receipt, Show, Stack } from '../types';
+import type { Card, DB, Deal, DealLine, ExpenseCategory, Receipt, Show, Stack, TradeLine } from '../types';
 import { isDuplicate, isValidNumber } from './numbers';
 import { liveCards } from './cards';
 import { splitByWeight, sumAsks } from './money';
@@ -33,9 +33,20 @@ export type Action =
   | { type: 'card/edit'; cardId: string; number?: string; name?: string; cardNumber?: string; printed?: string[]; stackId?: string | null; photoId?: string; now: string }
   /** Tombstone, never a hole — see Card.deletedAt and lib/cards.ts. */
   | { type: 'card/delete'; cardId: string; now: string }
-  | { type: 'receipt/add'; id: string; amountCents: number; category: ExpenseCategory; note: string; photoId?: string; now: string }
+  | { type: 'receipt/add'; id: string; amountCents: number; category: ExpenseCategory; note: string; photoId?: string; showId?: string; now: string }
   | { type: 'receipt/delete'; id: string; now: string }
   | { type: 'deal/record'; id: string; cardIds: string[]; agreedCents: number; showId?: string; now: string }
+  /**
+   * A trade. `cardIds` is your side and is marked sold exactly as a cash sale
+   * is; `incoming` is what came back, recorded but NOT created as inventory —
+   * see TradeLine in types.ts.
+   */
+  | {
+      type: 'deal/trade'; id: string; cardIds: string[];
+      yoursCents: number; yoursPct: number;
+      incoming: TradeLine[]; theirsPct: number;
+      cashDeltaCents: number; showId?: string; now: string;
+    }
   | { type: 'db/replace'; db: DB }
   /** Records arriving from another device, reconciled by the sync rules. */
   | { type: 'db/merge'; db: DB };
@@ -243,6 +254,8 @@ export function reducer(db: DB, action: Action): DB {
       const receipt: Receipt = {
         id: action.id, amountCents: action.amountCents, category: action.category,
         note: action.note, photoId: action.photoId,
+        // Absent for a standing cost that belongs to the business, not one day.
+        showId: action.showId,
         createdAt: action.now, updatedAt: action.now,
       };
       return { ...db, receipts: [...db.receipts, receipt] };
@@ -257,7 +270,13 @@ export function reducer(db: DB, action: Action): DB {
         ),
       };
 
+    case 'deal/trade':
     case 'deal/record': {
+      const isTrade = action.type === 'deal/trade';
+      /* A trade realizes what YOUR side went out at — which by construction is
+         what you took in plus the cash difference. One meaning of agreedCents
+         lets Sales total both kinds with no special case. */
+      const realizedTotal = isTrade ? action.yoursCents : action.agreedCents;
       const cards = action.cardIds
         .map((id) => db.cards.find((c) => c.id === id))
         .filter((c): c is Card => c !== undefined && c.deletedAt == null);
@@ -268,7 +287,7 @@ export function reducer(db: DB, action: Action): DB {
       if (cards.some((c) => c.status === 'sold')) return db;
 
       const asks = cards.map((c) => c.priceCents ?? 0);
-      const parts = splitByWeight(action.agreedCents, asks);
+      const parts = splitByWeight(realizedTotal, asks);
 
       const lines: DealLine[] = cards.map((c, i) => {
         const stack = db.stacks.find((s) => s.id === c.stackId);
@@ -284,10 +303,18 @@ export function reducer(db: DB, action: Action): DB {
 
       const deal: Deal = {
         id: action.id,
-        type: 'cash',
+        type: isTrade ? 'trade' : 'cash',
         lines,
         subtotalCents: sumAsks(asks),
-        agreedCents: action.agreedCents,
+        agreedCents: realizedTotal,
+        ...(isTrade
+          ? {
+              incoming: action.incoming,
+              yoursPct: action.yoursPct,
+              theirsPct: action.theirsPct,
+              cashDeltaCents: action.cashDeltaCents,
+            }
+          : {}),
         // Absent when the deal was rung up outside a show, on the standalone
         // calculator. Sales totals everything; a show's own numbers filter here.
         showId: action.showId,

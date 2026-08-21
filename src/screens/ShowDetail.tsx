@@ -12,16 +12,24 @@
  */
 import { useState } from 'react';
 import { useStore, nowIso } from '../lib/store';
-import { liveShows, showBooks, showLeftInCase } from '../lib/shows';
+import { liveShows, showLeftInCase } from '../lib/shows';
+import { bookSummary } from '../lib/books';
+import { EXPENSE_CATEGORIES } from '../types';
 import { packedSummary } from '../lib/packing';
 import { formatCents } from '../lib/money';
 import { rowLabel } from '../lib/title';
 import { liveCards } from '../lib/cards';
 import { Prep } from './Prep';
 import { Show as Register } from './Show';
+import { Trade } from './Trade';
 import { prettyDate } from './Shows';
 import type { Route } from '../lib/route';
 import type { Show } from '../types';
+
+/** Category value -> label, built from the one list in types.ts. */
+const EXPENSE_LABELS = Object.fromEntries(
+  EXPENSE_CATEGORIES.map((c) => [c.value, c.label]),
+) as Record<string, string>;
 
 export function ShowDetail({ showId, go, onBack, onOpenCard }: {
   showId: string;
@@ -72,13 +80,25 @@ function ShowTime({ show, go, onBack, onClose }: {
   show: Show; go: (r: Route, id?: string) => void; onBack: () => void; onClose: () => void;
 }) {
   const [confirming, setConfirming] = useState(false);
+  /* Cash or trade. A tab rather than a mode buried in the register: they are
+     different deals with different math, and the dealer knows which one is
+     happening before they touch the screen. */
+  const [kind, setKind] = useState<'cash' | 'trade'>('cash');
   const { db } = useStore();
-  const books = showBooks(db, show.id);
+  const books = bookSummary(db, show.id);
 
   return (
     <>
       <button className="backlink" onClick={onBack}>← Shows</button>
-      <Register go={go} showId={show.id} />
+
+      <div className="seg" role="group" aria-label="Cash sale or trade">
+        <button aria-pressed={kind === 'cash'} onClick={() => setKind('cash')}>Cash</button>
+        <button aria-pressed={kind === 'trade'} onClick={() => setKind('trade')}>Trade</button>
+      </div>
+
+      {kind === 'cash'
+        ? <Register go={go} showId={show.id} />
+        : <Trade showId={show.id} onDone={() => setKind('cash')} />}
 
       <h2 style={{ marginTop: 26 }}><span>End of the day</span></h2>
       {confirming ? (
@@ -114,7 +134,7 @@ function ShowTime({ show, go, onBack, onClose }: {
  */
 function PostShow({ show, onBack }: { show: Show; onBack: () => void }) {
   const { db } = useStore();
-  const books = showBooks(db, show.id);
+  const books = bookSummary(db, show.id);
   const left = showLeftInCase(db, show.id);
   const packed = packedSummary(db, show.packedStackIds);
   const [counted, setCounted] = useState('');
@@ -133,18 +153,46 @@ function PostShow({ show, onBack }: { show: Show; onBack: () => void }) {
         </div>
       </header>
 
-      <div className="stats two">
+      {/*
+        * Three figures, and PROFIT is the one that matters — takings with no
+        * costs against them is the most flattering possible lie about a day.
+        * The table fee is charged to the show on Receipts and lands here.
+        */}
+      <div className="stats">
         <div className="stat money">
           <div className="k">Took</div>
           <div className="v">{formatCents(books.takenCents)}</div>
           <div className="s">{books.dealCount} {books.dealCount === 1 ? 'deal' : 'deals'}</div>
         </div>
         <div className="stat">
-          <div className="k">Cards sold</div>
-          <div className="v">{books.cardsSold}</div>
-          <div className="s">out of {packed.cardCount + books.cardsSold} carried</div>
+          <div className="k">Cost</div>
+          <div className="v">{formatCents(books.spentCents)}</div>
+          <div className="s">{books.spentCents === 0 ? 'nothing logged' : 'expenses'}</div>
+        </div>
+        <div className={`stat${books.profitCents < 0 ? ' loss' : ' money'}`}>
+          <div className="k">Profit</div>
+          <div className="v">{formatCents(books.profitCents)}</div>
+          <div className="s">took − cost</div>
         </div>
       </div>
+
+      <p className="claim" style={{ marginTop: 9 }}>
+        {books.cardsSold} of {packed.cardCount + books.cardsSold} cards carried went out.
+      </p>
+
+      {books.byCategory.length > 0 && (
+        <>
+          <h2>What it cost</h2>
+          <div className="list">
+            {books.byCategory.map((c) => (
+              <div className="row" key={c.category}>
+                <span className="mid"><span className="t">{EXPENSE_LABELS[c.category]}</span></span>
+                <span className="amt">{formatCents(c.totalCents)}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       {/*
         * The day's real discount rate: what was taken against what was ASKED

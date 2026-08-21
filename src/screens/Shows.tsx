@@ -14,7 +14,8 @@
  */
 import { useState } from 'react';
 import { useStore, newId, nowIso } from '../lib/store';
-import { showBooks, showsByDate } from '../lib/shows';
+import { showsByDate } from '../lib/shows';
+import { bookSummary } from '../lib/books';
 import { packedSummary } from '../lib/packing';
 import { formatCents } from '../lib/money';
 import type { Show, ShowPhase } from '../types';
@@ -124,7 +125,7 @@ export function Shows({ go, onOpen }: {
 
 function ShowRow({ show, onOpen }: { show: Show; onOpen: (id: string) => void }) {
   const { db } = useStore();
-  const books = showBooks(db, show.id);
+  const books = bookSummary(db, show.id);
   const packed = packedSummary(db, show.packedStackIds);
   const closed = show.phase === 'done';
 

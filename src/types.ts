@@ -143,17 +143,48 @@ export interface DealLine {
 }
 
 /**
- * A completed sale. Totals are DERIVED from lines, never from a counter —
- * see lib/money.ts.
+ * One side of a trade that is NOT in the book: the cards coming in.
+ *
+ * They are recorded on the deal, not created as inventory. This app is
+ * number-first — a card exists once it wears a sticker — and cards taken in a
+ * trade have not been stickered yet. Inventing numbers for them at the table
+ * would put cards in the book that cannot be found in the case. They get
+ * scanned in afterwards like anything else; this line is what they were
+ * credited at, kept so the trade reads back honestly.
+ */
+export interface TradeLine {
+  /** What the dealer called it at the table. */
+  title: string;
+  /** What it was valued at before the spread, in cents. */
+  askCents: number;
+}
+
+/**
+ * A completed deal — a cash sale, or a trade. Totals are DERIVED from lines,
+ * never from a counter — see lib/money.ts.
  */
 export interface Deal {
   id: string;
-  type: 'cash';
+  type: 'cash' | 'trade';
   lines: DealLine[];
   /** Sum of line asks at deal time, in cents. */
   subtotalCents: number;
-  /** What the buyer actually paid, in cents. */
+  /**
+   * What your side realized, in cents.
+   *
+   * For a cash sale that is what the buyer paid. For a TRADE it is what your
+   * cards went out at — which equals the value of what you took in plus any
+   * cash difference, by construction. Keeping one meaning lets Sales total both
+   * kinds without a special case.
+   */
   agreedCents: number;
+  /** Trade only: what came in, at what it was credited. */
+  incoming?: TradeLine[];
+  /** Trade only: the two dials, so the spread can be read back later. */
+  yoursPct?: number;
+  theirsPct?: number;
+  /** Trade only: positive means they paid cash on top; negative means you did. */
+  cashDeltaCents?: number;
   /**
    * The show this was rung up at, if any.
    *
@@ -234,6 +265,15 @@ export interface Receipt {
   note: string;
   /** Key into the photo store. Absent when there is no picture. */
   photoId?: string;
+  /**
+   * The show this expense belongs to, if any.
+   *
+   * A table fee is incurred BY a show and has to land against it, or that
+   * show's profit is takings with no cost against them — the most flattering
+   * possible lie. Absent means a standing cost (supplies, a card bought at
+   * home) that belongs to the business rather than to one day.
+   */
+  showId?: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
   /**

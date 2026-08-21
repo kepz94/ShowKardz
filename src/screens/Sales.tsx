@@ -4,13 +4,24 @@ import type { Route } from '../App';
 import { useStore } from '../lib/store';
 import { formatCents, pctFromAmount } from '../lib/money';
 import { bookSummary } from '../lib/books';
+import { showsByDate } from '../lib/shows';
+import { prettyDate } from './Shows';
 
 /** The record: what sold, for what, and whether the case still adds up. */
-export function Sales({ go }: { go: (r: Route) => void }) {
+export function Sales({ go }: { go: (r: Route, id?: string) => void }) {
   const { db } = useStore();
   const [counted, setCounted] = useState('');
 
   const s = bookSummary(db);
+
+  /* Closed shows only: an open one has not finished making its number yet. */
+  const closedShows = showsByDate(db).filter((sh) => sh.phase === 'done');
+
+  /* What the calculator did, so the per-show rows and the total reconcile. */
+  const unattached = {
+    takenCents: db.deals.filter((d) => d.showId == null).reduce((t, d) => t + d.agreedCents, 0),
+    dealCount: db.deals.filter((d) => d.showId == null).length,
+  };
   const deals = [...db.deals].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const inCase = liveCards(db).filter((c) => c.status === 'available');
 
@@ -51,6 +62,49 @@ export function Sales({ go }: { go: (r: Route) => void }) {
           Your realized percentage, on your own asking prices. Never shared, never aggregated,
           never sent anywhere.
         </p>
+      )}
+
+      {/*
+        * Sales is the whole business; a show's own books live inside that show.
+        * This is the bridge — one row per show with what it netted, tapping
+        * through to the day it happened. Deals with no show are the calculator
+        * and are counted in the totals above and in no row here.
+        */}
+      {closedShows.length > 0 && (
+        <>
+          <h2>
+            <span>By show</span>
+            <span className="count">{closedShows.length}</span>
+          </h2>
+          <div className="list">
+            {closedShows.map((sh) => {
+              const b = bookSummary(db, sh.id);
+              return (
+                <button className="grp" key={sh.id} onClick={() => go('shows', sh.id)}>
+                  <span className="cnt">{b.cardsSold}</span>
+                  <span className="mid">
+                    <span className="t">{sh.name}</span>
+                    <span className="s">
+                      <span className="ctx">
+                        {prettyDate(sh.date)} · took {formatCents(b.takenCents)}
+                        {b.spentCents > 0 && <> · cost {formatCents(b.spentCents)}</>}
+                      </span>
+                    </span>
+                  </span>
+                  <span className={`amt${b.profitCents < 0 ? ' bad' : ''}`}>
+                    {formatCents(b.profitCents)}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {unattached.dealCount > 0 && (
+            <p className="claim" style={{ marginTop: 9 }}>
+              Plus {formatCents(unattached.takenCents)} from {unattached.dealCount}{' '}
+              {unattached.dealCount === 1 ? 'deal' : 'deals'} not at a show.
+            </p>
+          )}
+        </>
       )}
 
       <h2>
