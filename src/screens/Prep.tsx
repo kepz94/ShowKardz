@@ -1,7 +1,7 @@
 /**
- * The night before, as three steps in the order they actually happen.
+ * PREP — the first phase of a show, as three steps in the order they happen.
  *
- * This is the home screen now, and it exists because the work before a show is
+ * This is one show's night-before screen, and it exists because the work before a show is
  * not "use the app" — it is a short, finite checklist: price what has no price,
  * put a floor under what needs one, and decide what goes in the car. Each step
  * carries the count that says whether it is done, so the screen answers "am I
@@ -15,19 +15,26 @@
  * pricing a card in the Book is reflected the moment you come back.
  */
 import { useMemo, useState } from 'react';
-import { useStore } from '../lib/store';
+import { useStore, nowIso } from '../lib/store';
 import { liveCards } from '../lib/cards';
 import { groupRows } from '../lib/groups';
 import { isPacked, packedSummary } from '../lib/packing';
 import { formatCents } from '../lib/money';
-import { cardLabel } from '../lib/title';
-import type { Card, Stack } from '../types';
+import { rowLabel } from '../lib/title';
+import type { Card, Show, Stack } from '../types';
 import type { Route } from '../lib/route';
+import { prettyDate } from './Shows';
 
 /** How many rows of a queue to show before it becomes a wall of text. */
 const PREVIEW = 4;
 
-export function Prep({ go }: { go: (r: Route, cardId?: string) => void }) {
+export function Prep({ go, show, onOpenCard, onDone }: {
+  go: (r: Route, id?: string) => void;
+  show: Show;
+  onOpenCard: (cardId: string) => void;
+  /** Prep is finished — open the doors. */
+  onDone: () => void;
+}) {
   const { db, dispatch } = useStore();
   const [showAllUnpriced, setShowAllUnpriced] = useState(false);
   const [showAllFloors, setShowAllFloors] = useState(false);
@@ -49,7 +56,7 @@ export function Prep({ go }: { go: (r: Route, cardId?: string) => void }) {
 
   const priced = cards.length - unpriced.length;
   const rows = useMemo(() => groupRows(db), [db]);
-  const summary = useMemo(() => packedSummary(db), [db]);
+  const summary = useMemo(() => packedSummary(db, show.packedStackIds), [db, show.packedStackIds]);
 
   const pct = cards.length === 0 ? 0 : Math.round((priced / cards.length) * 100);
 
@@ -65,8 +72,8 @@ export function Prep({ go }: { go: (r: Route, cardId?: string) => void }) {
     <>
       <header className="screen-head">
         <div>
-          <div className="eb">Night before</div>
-          <h1>Get ready</h1>
+          <div className="eb">Prep · {prettyDate(show.date)}</div>
+          <h1>{show.name}</h1>
         </div>
         <div className="aside">
           <div className="k">Priced</div>
@@ -94,7 +101,7 @@ export function Prep({ go }: { go: (r: Route, cardId?: string) => void }) {
                 tone="alert" active={activeStep === 1}>
             <Queue cards={unpriced} expanded={showAllUnpriced}
                    onExpand={() => setShowAllUnpriced(true)}
-                   onOpen={(id) => go('book', id)}
+                   onOpen={onOpenCard}
                    stacks={db.stacks}
                    right={() => <span className="need">No price</span>} />
           </Step>
@@ -108,7 +115,7 @@ export function Prep({ go }: { go: (r: Route, cardId?: string) => void }) {
             </p>
             <Queue cards={needFloors} expanded={showAllFloors}
                    onExpand={() => setShowAllFloors(true)}
-                   onOpen={(id) => go('book', id)}
+                   onOpen={onOpenCard}
                    stacks={db.stacks}
                    right={(c) => <span className="ask">{formatCents(c.priceCents ?? 0)}</span>} />
           </Step>
@@ -122,16 +129,18 @@ export function Prep({ go }: { go: (r: Route, cardId?: string) => void }) {
                 alwaysOpen>
             {rows.length === 0 ? (
               <p className="stepnote">
-                No groups yet. Make one in the Book and it becomes something you can pack.
+                No groups yet. Make one in your collection and it becomes something you can pack.
               </p>
             ) : (
               <div className="packlist">
                 {rows.map((r) => {
-                  const on = isPacked(db.packedStackIds, r.id);
+                  const on = isPacked(show.packedStackIds, r.id);
                   return (
                     <button key={r.id} className={`packrow${on ? ' on' : ''}`}
                             aria-pressed={on}
-                            onClick={() => dispatch({ type: 'pack/toggle', stackId: r.id })}>
+                            onClick={() => dispatch({
+                              type: 'show/pack', showId: show.id, stackId: r.id, now: nowIso(),
+                            })}>
                       <span className="tick" aria-hidden>{on ? '✓' : ''}</span>
                       <span className="grow">
                         <span className="nm">{r.name}</span>
@@ -188,6 +197,20 @@ export function Prep({ go }: { go: (r: Route, cardId?: string) => void }) {
             )}
           </section>
 
+          {/*
+            * Opening the doors is a deliberate act, and it is allowed with an
+            * empty case: a dealer who wants to sell straight off the pile
+            * should not be blocked by a checklist. The warning above is the
+            * honest version of that, not a gate.
+            */}
+          <button className="btn money wide" onClick={onDone}>
+            Open the doors
+            <span className="sub">
+              {summary.cardCount > 0
+                ? `${summary.cardCount} cards · ${formatCents(summary.valueCents)}`
+                : 'Nothing packed yet'}
+            </span>
+          </button>
           <button className="btn ghost wide" onClick={() => go('scan')}>
             Scan more cards
           </button>
@@ -243,15 +266,7 @@ function Queue({
       {shown.map((c) => (
         <button key={c.id} className="qrow" onClick={() => onOpen(c.id)}>
           <span className="num">{c.number}</span>
-          {/*
-            * The card's OWN name, not the composed title. composeTitle prefixes
-            * the group, and at this width that pushed the player's name off the
-            * end — measured: 313px of text into 159px of row, so the row read
-            * "2023 Panini Prizm Unpr…" and identified nothing. The number is
-            * already in its own chip to the left, so the group adds nothing here
-            * and costs the one part that tells the cards apart.
-            */}
-          <span className="nm">{c.name.trim() || cardLabel(c, stacks.find((s) => s.id === c.stackId))}</span>
+          <span className="nm">{rowLabel(c, stacks.find((s) => s.id === c.stackId))}</span>
           {right(c)}
         </button>
       ))}

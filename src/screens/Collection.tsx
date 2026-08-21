@@ -6,6 +6,7 @@ import { compsUrl } from '../lib/comps';
 import { dollarsToCents, formatCents } from '../lib/money';
 import { cardsInGroup, groupName, groupRows, NO_GROUP, statsFor, totalInCase } from '../lib/groups';
 import { isPacked } from '../lib/packing';
+import { currentShow } from '../lib/shows';
 import { downscale } from '../lib/images';
 import { putPhoto } from '../lib/photos';
 import { PhotoThumb } from '../components/PhotoThumb';
@@ -21,8 +22,8 @@ type Filter = 'all' | 'unpriced' | 'available' | 'sold';
  * Scanning deliberately happens elsewhere: that screen is for getting cards in,
  * this one is for making sense of them.
  */
-export function Book({ go, openCardId }: {
-  go: (r: Route, cardId?: string) => void;
+export function Collection({ go, openCardId }: {
+  go: (r: Route, id?: string) => void;
   /**
    * A card to open on arrival, carried in the URL by Prep. It is read as the
    * INITIAL editing state rather than watched, so closing the editor does not
@@ -60,17 +61,17 @@ export function Book({ go, openCardId }: {
   }
 
   return (
-    <Collection go={go} onEdit={setEditing} onNewGroup={() => setDeclaring(true)}
-                onOpenGroup={setOpenGroup} />
+    <GroupsScreen go={go} onEdit={setEditing} onNewGroup={() => setDeclaring(true)}
+                  onOpenGroup={setOpenGroup} />
   );
 }
 
 /* -------------------------------------------------------------------------- */
 
-function Collection({
+function GroupsScreen({
   go, onEdit, onNewGroup, onOpenGroup,
 }: {
-  go: (r: Route) => void;
+  go: (r: Route, id?: string) => void;
   onEdit: (id: string) => void;
   onNewGroup: () => void;
   onOpenGroup: (id: string) => void;
@@ -107,7 +108,7 @@ function Collection({
     <>
       <header className="screen-head">
         <div>
-          <div className="eb">Book</div>
+          <div className="eb">Collection</div>
           <h1>Your groups</h1>
         </div>
         {/* What the case is WORTH, since that is what every row below adds up to. */}
@@ -234,6 +235,7 @@ function CardRow({ card: c, onEdit, inGroup }: {
 function GroupList({ onOpen, onNewGroup }: { onOpen: (id: string) => void; onNewGroup: () => void }) {
   const { db } = useStore();
   const rows = useMemo(() => groupRows(db), [db]);
+  const current = currentShow(db);
 
   return (
     <>
@@ -256,7 +258,9 @@ function GroupList({ onOpen, onNewGroup }: { onOpen: (id: string) => void; onNew
             </div>
           </div>
         ) : rows.map((r) => {
-          const packed = isPacked(db.packedStackIds, r.id);
+          /* Packed for the show being got ready — a group's row should say
+             whether it is going to the NEXT show, not to some global case. */
+          const packed = isPacked(current?.packedStackIds, r.id);
           return (
             <button className={`grp${packed ? ' packed' : ''}`}
                     key={r.id === '' ? '__none' : r.id} onClick={() => onOpen(r.id)}>
@@ -344,7 +348,7 @@ function GroupDetail({
 
       <header className="screen-head">
         <div>
-          <div className="eb">Book · group</div>
+          <div className="eb">Collection · group</div>
           <h1>{ungrouped ? 'No group' : groupName(stack!)}</h1>
         </div>
       </header>
@@ -454,7 +458,7 @@ function AssignCards({ stack, onDone }: { stack: Stack; onDone: () => void }) {
     <>
       <header className="screen-head">
         <div>
-          <div className="eb">Book · group</div>
+          <div className="eb">Collection · group</div>
           <h1>Add to {groupName(stack)}</h1>
         </div>
         <div className="aside">
@@ -556,7 +560,7 @@ function NewGroup({ onDone, existing }: {
     <>
       <header className="screen-head">
         <div>
-          <div className="eb">Book</div>
+          <div className="eb">Collection</div>
           <h1>{renaming ? 'Rename group' : 'New group'}</h1>
         </div>
       </header>

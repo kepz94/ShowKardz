@@ -5,6 +5,8 @@ import { EMPTY_DB, type DB } from '../types';
 import { liveReceipts } from './live';
 
 const NOW = '2026-08-18T12:00:00.000Z';
+const T1 = '2026-08-18T12:00:00.000Z';
+const T2 = '2026-08-18T13:00:00.000Z';
 
 const withStack = (): DB =>
   reducer(EMPTY_DB, {
@@ -398,33 +400,76 @@ describe('groups — a name, and cards filed under it', () => {
   });
 });
 
-describe('pack/toggle — what is in the case', () => {
-  it('puts a group in the case', () => {
-    const db = reducer(EMPTY_DB, { type: 'pack/toggle', stackId: 's1' });
-    expect(db.packedStackIds).toEqual(['s1']);
+describe('shows — the lifecycle', () => {
+  const add = (db = EMPTY_DB) =>
+    reducer(db, { type: 'show/add', id: 'sh1', name: 'Riverside Hall B', date: '2026-09-05', now: T1 });
+
+  it('a new show starts in prep with an empty case', () => {
+    const s = add().shows[0]!;
+    expect(s.phase).toBe('prep');
+    expect(s.packedStackIds).toEqual([]);
+    expect(s.name).toBe('Riverside Hall B');
   });
 
-  it('takes it back out on a second tap', () => {
-    let db = reducer(EMPTY_DB, { type: 'pack/toggle', stackId: 's1' });
-    db = reducer(db, { type: 'pack/toggle', stackId: 's1' });
-    expect(db.packedStackIds).toEqual([]);
+  it('refuses a nameless show — it would be a blank row in a list of shows', () => {
+    expect(reducer(EMPTY_DB, { type: 'show/add', id: 'x', name: '   ', date: '2026-09-05', now: T1 }).shows)
+      .toEqual([]);
   });
 
-  it('leaves every other part of the record alone', () => {
-    // Packing is about which groups travel; it must not touch a card, a price
-    // or a deal on its way through the single write path.
-    const before: DB = { ...EMPTY_DB, stacks: [], cards: [], deals: [], receipts: [] };
-    const after = reducer(before, { type: 'pack/toggle', stackId: 's1' });
-    expect(after.cards).toBe(before.cards);
-    expect(after.deals).toBe(before.deals);
-    expect(after.receipts).toBe(before.receipts);
-    expect(after.stacks).toBe(before.stacks);
+  it('advances prep to live to done and stamps each transition once', () => {
+    let db = add();
+    db = reducer(db, { type: 'show/advance', showId: 'sh1', now: T1 });
+    expect(db.shows[0]!.phase).toBe('live');
+    expect(db.shows[0]!.openedAt).toBe(T1);
+
+    db = reducer(db, { type: 'show/advance', showId: 'sh1', now: T2 });
+    expect(db.shows[0]!.phase).toBe('done');
+    expect(db.shows[0]!.closedAt).toBe(T2);
+    // The opening stamp is history and must not be rewritten by a later move.
+    expect(db.shows[0]!.openedAt).toBe(T1);
   });
 
-  it('packs a group that does not exist yet without complaining', () => {
-    // The reducer does not police this: groupRows only offers real groups, and
-    // packedCards ignores an id that matches nothing.
-    expect(reducer(EMPTY_DB, { type: 'pack/toggle', stackId: 'ghost' }).packedStackIds)
-      .toEqual(['ghost']);
+  it('will not advance past done — a closed show is the record', () => {
+    let db = add();
+    db = reducer(db, { type: 'show/advance', showId: 'sh1', now: T1 });
+    db = reducer(db, { type: 'show/advance', showId: 'sh1', now: T1 });
+    const closed = reducer(db, { type: 'show/advance', showId: 'sh1', now: T2 });
+    expect(closed.shows[0]!.phase).toBe('done');
+    expect(closed.shows[0]!.closedAt).toBe(T1);
+  });
+
+  it('packs and unpacks a group on the show itself', () => {
+    let db = add();
+    db = reducer(db, { type: 'show/pack', showId: 'sh1', stackId: 'g1', now: T1 });
+    expect(db.shows[0]!.packedStackIds).toEqual(['g1']);
+    db = reducer(db, { type: 'show/pack', showId: 'sh1', stackId: 'g1', now: T2 });
+    expect(db.shows[0]!.packedStackIds).toEqual([]);
+  });
+
+  it('keeps two shows\u2019 cases apart', () => {
+    let db = add();
+    db = reducer(db, { type: 'show/add', id: 'sh2', name: 'Other', date: '2026-10-01', now: T1 });
+    db = reducer(db, { type: 'show/pack', showId: 'sh1', stackId: 'g1', now: T1 });
+    expect(db.shows.find((s) => s.id === 'sh1')!.packedStackIds).toEqual(['g1']);
+    expect(db.shows.find((s) => s.id === 'sh2')!.packedStackIds).toEqual([]);
+  });
+
+  it('renames without touching the phase or the case', () => {
+    let db = reducer(add(), { type: 'show/pack', showId: 'sh1', stackId: 'g1', now: T1 });
+    db = reducer(db, { type: 'show/edit', showId: 'sh1', name: 'Renamed', now: T2 });
+    expect(db.shows[0]!.name).toBe('Renamed');
+    expect(db.shows[0]!.phase).toBe('prep');
+    expect(db.shows[0]!.packedStackIds).toEqual(['g1']);
+  });
+
+  it('refuses an empty rename rather than leaving the show nameless', () => {
+    const db = reducer(add(), { type: 'show/edit', showId: 'sh1', name: '  ', now: T2 });
+    expect(db.shows[0]!.name).toBe('Riverside Hall B');
+  });
+
+  it('deletes as a tombstone, so a sync cannot resurrect it', () => {
+    const db = reducer(add(), { type: 'show/delete', showId: 'sh1', now: T2 });
+    expect(db.shows).toHaveLength(1);
+    expect(db.shows[0]!.deletedAt).toBe(T2);
   });
 });

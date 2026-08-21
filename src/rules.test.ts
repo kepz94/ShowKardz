@@ -143,3 +143,30 @@ describe('collection allowlist', () => {
     await assertFails(setDoc(doc(mine(), 'users', ME, 'secrets', 'x1'), { id: 'x1' }));
   });
 });
+
+describe('shows', () => {
+  const show = (over: Record<string, unknown> = {}) => ({
+    id: 'sh1', name: 'Riverside Hall B', date: '2026-09-05',
+    phase: 'prep', packedStackIds: [], createdAt: '2026-08-19T00:00:00.000Z', ...over,
+  });
+
+  it('accepts a show, because a new collection is DENIED until it is allowlisted', async () => {
+    await assertSucceeds(setDoc(doc(mine(), 'users', ME, 'shows', 'sh1'), show()));
+  });
+
+  it('rejects a phase no screen knows how to render', async () => {
+    await assertFails(setDoc(doc(mine(), 'users', ME, 'shows', 'sh1'), show({ phase: 'halftime' })));
+  });
+
+  it('rejects a nameless show', async () => {
+    await assertFails(setDoc(doc(mine(), 'users', ME, 'shows', 'sh1'), show({ name: '' })));
+  });
+
+  it('rejects a packing list that is not a list', async () => {
+    await assertFails(setDoc(doc(mine(), 'users', ME, 'shows', 'sh1'), show({ packedStackIds: 'g1' })));
+  });
+
+  it('refuses another account\u2019s show', async () => {
+    await assertFails(setDoc(doc(mine(), 'users', 'someone-else', 'shows', 'sh1'), show()));
+  });
+});

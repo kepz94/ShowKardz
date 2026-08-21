@@ -13,7 +13,7 @@ const receipt = (amountCents: number, category: Receipt['category'] = 'other'): 
 });
 
 const db = (deals: Deal[], receipts: Receipt[]): DB =>
-  ({ stacks: [], cards: [], deals, receipts });
+  ({ stacks: [], cards: [], deals, receipts, shows: [] });
 
 describe('bookSummary', () => {
   it('takes in what the deals actually realized', () => {

@@ -1,11 +1,12 @@
 import { liveCards } from '../lib/cards';
 import { groupRows } from '../lib/groups';
 import { isPacked, packedCards, packedSummary } from '../lib/packing';
+import { liveShows } from '../lib/shows';
 import { useState } from 'react';
 import type { Route } from '../App';
 import { useStore, newId, nowIso } from '../lib/store';
 import { findByNumber } from '../lib/numbers';
-import { cardLabel } from '../lib/title';
+import { rowLabel } from '../lib/title';
 import { formatCents, pctOf, sumAsks } from '../lib/money';
 import { checkFloors } from '../lib/floors';
 import type { Card } from '../types';
@@ -13,7 +14,15 @@ import type { Card } from '../types';
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
 /** The register. Works with no signal — every figure here is local arithmetic. */
-export function Show({ go }: { go: (r: Route) => void }) {
+/**
+ * The register. Used two ways, and it must not care which:
+ *
+ *   - at a show, with `showId` — "in case" means the cards that show packed,
+ *     and every deal is stamped with it so the show can be totalled later;
+ *   - standalone, with no showId — the same math for a sale away from a table.
+ *     Those deals count toward Sales and toward no show.
+ */
+export function Show({ go, showId }: { go: (r: Route, id?: string) => void; showId?: string }) {
   const { db, dispatch } = useStore();
   const [entry, setEntry] = useState('');
   const [cart, setCart] = useState<string[]>([]);
@@ -23,10 +32,15 @@ export function Show({ go }: { go: (r: Route) => void }) {
 
   const sellable = liveCards(db).filter((c) => c.status === 'available');
 
-  /* What was actually loaded into the case tonight. Empty = Prep was never used. */
-  const packed = packedSummary(db);
+  /*
+   * What this show packed. With no show there is no case — the calculator sells
+   * from the whole book, because nothing said otherwise.
+   */
+  const show = showId != null ? liveShows(db).find((s) => s.id === showId) : undefined;
+  const packedIds = show?.packedStackIds;
+  const packed = packedSummary(db, packedIds);
   const rows = groupRows(db);
-  const onTable = packedCards(db).filter((c) => c.status === 'available');
+  const onTable = packedCards(db, packedIds).filter((c) => c.status === 'available');
   const cartCards = cart
     .map((id) => liveCards(db).find((c) => c.id === id))
     .filter((c): c is Card => c !== undefined);
@@ -45,7 +59,7 @@ export function Show({ go }: { go: (r: Route) => void }) {
   function commit() {
     if (cart.length === 0 || charging) return;
     setCharging(true);
-    dispatch({ type: 'deal/record', id: newId(), cardIds: cart, agreedCents, now: nowIso() });
+    dispatch({ type: 'deal/record', id: newId(), cardIds: cart, agreedCents, showId, now: nowIso() });
     setDone({ agreedCents, count: cart.length });
     setCart([]);
     setEntry('');
@@ -97,8 +111,8 @@ export function Show({ go }: { go: (r: Route) => void }) {
               A card can only be sold once it has a price. Price them in the Book and they land here.
             </div>
             <button className="btn sm" style={{ marginTop: 14, width: 'auto', display: 'inline-flex' }}
-                    onClick={() => go('book')}>
-              Go to the Book
+                    onClick={() => go('collection')}>
+              Go to the collection
             </button>
           </div>
         </div>
@@ -134,13 +148,12 @@ export function Show({ go }: { go: (r: Route) => void }) {
           </div>
           <div className="chips">
             {rows
-              .filter((r) => isPacked(db.packedStackIds, r.id))
+              .filter((r) => isPacked(packedIds, r.id))
               .map((r) => (
                 <span className="chip" key={r.id}>
                   {r.name}<b>{r.cardCount}</b>
                 </span>
               ))}
-            <button className="chip change" onClick={() => go('prep')}>Change in Prep</button>
           </div>
         </section>
       )}
@@ -154,7 +167,7 @@ export function Show({ go }: { go: (r: Route) => void }) {
               <>
                 {/* The typo guard has to say something even for a card entered
                     with only its number, or it guards nothing. */}
-                <b>{cardLabel(match, db.stacks.find((s) => s.id === match.stackId))}</b>
+                <b>{rowLabel(match, db.stacks.find((s) => s.id === match.stackId))}</b>
                 {alreadyInCart && <span className="muted"> · already on this deal</span>}
                 <span className="amt">{formatCents(match.priceCents ?? 0)}</span>
               </>
@@ -199,7 +212,7 @@ export function Show({ go }: { go: (r: Route) => void }) {
             <div className="row" key={c.id}>
               <span className="num">{c.number}</span>
               <span className="mid">
-                <span className="t">{cardLabel(c, stack)}</span>
+                <span className="t">{rowLabel(c, stack)}</span>
                 {c.floorCents != null && (
                   <span className="s">Floor {formatCents(c.floorCents)}</span>
                 )}

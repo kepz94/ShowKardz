@@ -19,7 +19,7 @@
  * The function is symmetric on cards — both devices reach the same answer
  * whichever side they call it from — so a merge cannot oscillate.
  */
-import type { Card, DB, Deal, Receipt, Stack } from '../../types';
+import type { Card, DB, Deal, Receipt, Show, Stack } from '../../types';
 import { mergeCard } from '../merge';
 
 /** Union by id, keeping the first copy seen. For records that never change. */
@@ -57,6 +57,9 @@ const stampOf = (r: { createdAt: string; updatedAt?: string }): string => r.upda
 /** Later write wins; a tie keeps the local copy so the merge cannot oscillate. */
 const pickStack = (a: Stack, b: Stack): Stack => (stampOf(a) >= stampOf(b) ? a : b);
 
+/** Same rule for shows: later write wins, a tie keeps the local copy. */
+const pickShow = (a: Show, b: Show): Show => (stampOf(a) >= stampOf(b) ? a : b);
+
 export function mergeDb(local: DB, remote: DB): DB {
   return {
     stacks: mergeById<Stack>(local.stacks, remote.stacks, pickStack),
@@ -64,18 +67,11 @@ export function mergeDb(local: DB, remote: DB): DB {
     deals: unionById<Deal>(local.deals, remote.deals),
     receipts: mergeById<Receipt>(local.receipts, remote.receipts, lastWriteWins),
     /*
-     * NOT MERGED — deliberately kept from THIS device.
-     *
-     * What is physically in one dealer's case is a fact about this trip and
-     * this bag, not a record to reconcile: a phone and a laptop can disagree
-     * and neither is wrong. It is never pushed (changedDocs only walks the
-     * collections), so a remote copy is either absent or stale by definition.
-     *
-     * It is carried explicitly rather than left out, because this function
-     * rebuilds the DB field by field and anything it forgets is DROPPED. A
-     * merge that quietly emptied the case would surface on the morning of a
-     * show, with sync reporting perfect health because nothing failed.
+     * Shows are last-write-wins on updatedAt, falling back to createdAt for one
+     * never edited. A show carries its own packing list, so unlike the old
+     * device-local field this DOES travel: pack the case on the laptop, sell
+     * from the phone.
      */
-    packedStackIds: local.packedStackIds ?? [],
+    shows: mergeById<Show>(local.shows, remote.shows, pickShow),
   };
 }

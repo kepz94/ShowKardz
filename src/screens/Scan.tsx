@@ -409,7 +409,7 @@ export function Scan({ go }: { go: (r: Route) => void }) {
             ))}
           </select>
         ) : (
-          <button className="ch" onClick={() => go('book')}>Make one</button>
+          <button className="ch" onClick={() => go('collection')}>Make one</button>
         )}
       </div>
 

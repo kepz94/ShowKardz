@@ -472,6 +472,10 @@ input.from-read{background:var(--money-soft);border-color:var(--money-line);
                 color:var(--money);font-weight:650}
 .claim.bad{color:var(--alert);font-weight:600}
 
+/* The sync bar's sign-in was a 27px target — under the 44px floor this app
+   holds everywhere else, and it is the control a stranded dealer needs most. */
+.syncbar .link{min-height:44px;display:inline-flex;align-items:center;padding:0 4px}
+
 /* ---- the action row ----------------------------------------------------- */
 .addrow{display:flex;gap:9px;align-items:stretch;margin-top:12px}
 .addrow .btn{flex:1}
@@ -806,3 +810,22 @@ textarea#s-name.from-read{background:var(--money-soft);border-color:var(--money-
 /* An empty group is a prompt, not a dead end — dashed so it reads as a slot
    waiting to be filled rather than a result that came back empty. */
 .empty.dashed{border:1.5px dashed var(--line2);border-radius:var(--r-lg);background:transparent}
+
+/* ---- shows: three phases of one record -----------------------------------
+   A show is a named day with a case, so its row has to say which of the three
+   phases it is in before anything else. Colour carries it: terracotta while
+   getting ready, sage while selling, quiet once it is the record. */
+.pill.phase-prep{background:var(--accent-soft);color:var(--accent-deep);
+                 border:1px solid var(--accent-line)}
+.pill.phase-live{background:var(--money-soft);color:var(--money);
+                 border:1px solid var(--money-edge)}
+.pill.phase-done{background:var(--n200);color:var(--mut);border:1px solid var(--line)}
+.grp.show-live{border-color:var(--money-edge)}
+.grp.show-prep{border-color:var(--accent-line)}
+
+/* The claim line, when what it claims is bad news. */
+.claim.bad{color:var(--alert);font-weight:600}
+
+/* The sync bar's sign-in was a 27px target — under the 44px floor this app
+   holds everywhere else, and it is the control a stranded dealer needs most. */
+.syncbar .link{min-height:44px;display:inline-flex;align-items:center;padding:0 4px}

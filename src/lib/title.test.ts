@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { composeTitle, cardLabel, prettyBlock } from './title';
+import { composeTitle, cardLabel, prettyBlock, rowLabel } from './title';
 import type { Card, Stack } from '../types';
 
 const prizm: Stack = {
@@ -134,5 +134,33 @@ describe('prettyBlock — what a kept block looks like in the name', () => {
 
   it('is empty for a block that is only punctuation', () => {
     expect(prettyBlock('#')).toBe('');
+  });
+});
+
+describe('rowLabel', () => {
+  const stack: Stack = { id: 's1', name: '2023 Panini Prizm', createdAt: '2026-08-19T00:00:00Z' };
+  const base: Card = {
+    id: 'c1', number: '455', name: '', status: 'available',
+    createdAt: '2026-08-19T00:00:00Z', updatedAt: '2026-08-19T00:00:00Z',
+  };
+
+  it('uses the card\u2019s own name, not the composed title', () => {
+    // A list row is narrow. composeTitle prefixes the group, so the group eats
+    // the width and the PLAYER is what gets truncated — the one part that tells
+    // the rows apart. Measured at 390px: 313px of text into a 159px row.
+    expect(rowLabel({ ...base, name: 'Anthony Edwards' }, stack)).toBe('Anthony Edwards');
+  });
+
+  it('falls back to the composed title when the card has no name', () => {
+    // No printed card number on this fixture, so the title is just the group.
+    expect(rowLabel(base, stack)).toBe('2023 Panini Prizm');
+  });
+
+  it('falls back for a card with no name and no group', () => {
+    expect(rowLabel(base, undefined)).toBe('Card 455');
+  });
+
+  it('treats a whitespace-only name as no name', () => {
+    expect(rowLabel({ ...base, name: '   ' }, stack)).toBe('2023 Panini Prizm');
   });
 });

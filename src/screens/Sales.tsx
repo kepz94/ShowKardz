@@ -64,7 +64,7 @@ export function Sales({ go }: { go: (r: Route) => void }) {
             <div className="t">No sales yet</div>
             <div className="s">Deals you ring up on the Show screen land here, card by card.</div>
             <button className="btn sm" style={{ marginTop: 14, width: 'auto', display: 'inline-flex' }}
-                    onClick={() => go('show')}>
+                    onClick={() => go('shows')}>
               Go to Show
             </button>
           </div>

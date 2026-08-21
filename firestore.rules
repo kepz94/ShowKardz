@@ -32,7 +32,7 @@ service cloud.firestore {
     // silently re-grants exactly what a narrow one refuses.
 
     function isKnownCollection(name) {
-      return name in ['stacks', 'cards', 'deals', 'receipts'];
+      return name in ['stacks', 'cards', 'deals', 'receipts', 'shows'];
     }
 
     // docId is passed in explicitly: a function declared here does NOT inherit
@@ -44,7 +44,19 @@ service cloud.firestore {
         && data.id == docId
         && (collection != 'cards' || validCard(data))
         && (collection != 'receipts' || validReceipt(data))
-        && (collection != 'deals' || validDeal(data));
+        && (collection != 'deals' || validDeal(data))
+        && (collection != 'shows' || validShow(data));
+    }
+
+    // A show is a named day with a case. The phase is closed to three values so
+    // a bad write cannot park a show in a state no screen knows how to render.
+    function validShow(data) {
+      return data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 200
+        && data.date is string
+        && data.phase in ['prep', 'live', 'done']
+        && data.packedStackIds is list;
     }
 
     function validCard(data) {

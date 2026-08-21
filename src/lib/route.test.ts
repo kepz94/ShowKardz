@@ -3,18 +3,18 @@ import { parseHash, toHash } from './route';
 
 describe('parseHash', () => {
   it('reads a plain screen', () => {
-    expect(parseHash('#/book')).toEqual({ route: 'book' });
+    expect(parseHash('#/collection')).toEqual({ route: 'collection' });
   });
 
   it('reads a card to open with it', () => {
-    expect(parseHash('#/book/abc123')).toEqual({ route: 'book', cardId: 'abc123' });
+    expect(parseHash('#/collection/abc123')).toEqual({ route: 'collection', id: 'abc123' });
   });
 
   it('falls back rather than erroring on an unknown screen', () => {
     // A stale bookmark should land somewhere usable, never on a blank page.
-    expect(parseHash('#/nonsense')).toEqual({ route: 'prep' });
-    expect(parseHash('')).toEqual({ route: 'prep' });
-    expect(parseHash('#/')).toEqual({ route: 'prep' });
+    expect(parseHash('#/nonsense')).toEqual({ route: 'shows' });
+    expect(parseHash('')).toEqual({ route: 'shows' });
+    expect(parseHash('#/')).toEqual({ route: 'shows' });
   });
 
   it('honours a caller-supplied fallback', () => {
@@ -22,33 +22,33 @@ describe('parseHash', () => {
   });
 
   it('tolerates a missing or doubled slash', () => {
-    expect(parseHash('#book')).toEqual({ route: 'book' });
-    expect(parseHash('#//book')).toEqual({ route: 'book' });
-    expect(parseHash('#/book/')).toEqual({ route: 'book' });
+    expect(parseHash('#collection')).toEqual({ route: 'collection' });
+    expect(parseHash('#//collection')).toEqual({ route: 'collection' });
+    expect(parseHash('#/collection/')).toEqual({ route: 'collection' });
   });
 
   it('does not mistake a card id for a screen', () => {
-    expect(parseHash('#/show/999')).toEqual({ route: 'show', cardId: '999' });
+    expect(parseHash('#/shows/999')).toEqual({ route: 'shows', id: '999' });
   });
 });
 
 describe('toHash', () => {
   it('writes a plain screen', () => {
-    expect(toHash('prep')).toBe('#/prep');
+    expect(toHash('shows')).toBe('#/shows');
   });
 
   it('writes a card alongside it', () => {
-    expect(toHash('book', 'abc123')).toBe('#/book/abc123');
+    expect(toHash('collection', 'abc123')).toBe('#/collection/abc123');
   });
 
   it('treats an empty id as no id', () => {
-    expect(toHash('book', '')).toBe('#/book');
+    expect(toHash('collection', '')).toBe('#/collection');
   });
 });
 
 describe('round trip', () => {
   it('survives a cold start, which is the whole reason it is in the URL', () => {
-    expect(parseHash(toHash('book', 'card-7'))).toEqual({ route: 'book', cardId: 'card-7' });
+    expect(parseHash(toHash('collection', 'card-7'))).toEqual({ route: 'collection', id: 'card-7' });
     expect(parseHash(toHash('sales'))).toEqual({ route: 'sales' });
   });
 });

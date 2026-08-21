@@ -154,7 +154,56 @@ export interface Deal {
   subtotalCents: number;
   /** What the buyer actually paid, in cents. */
   agreedCents: number;
+  /**
+   * The show this was rung up at, if any.
+   *
+   * Absent means the deal happened outside a show — the standalone calculator,
+   * or a deal recorded before shows existed. Both are legitimate, so Sales
+   * totals everything and a show's own numbers filter by this.
+   */
+  showId?: string;
   createdAt: Timestamp;
+}
+
+/**
+ * A show: a named day, and the case you take to it.
+ *
+ * A show is the unit the whole app orbits, so it is a record rather than a mode
+ * the app happens to be in. It carries its own name, its own date and its own
+ * packed groups, which is what makes "what did Riverside in March actually
+ * make" answerable months later.
+ *
+ * THREE PHASES, IN ORDER, NEVER BACKWARDS BY ACCIDENT. `prep` is the night
+ * before: price, floor, pack. `live` is the table. `done` is the record. Moving
+ * on is a deliberate act — see lib/shows.ts — because each transition changes
+ * what the screen is for, and having that happen on its own mid-deal would be
+ * the worst possible time for it.
+ */
+export type ShowPhase = 'prep' | 'live' | 'done';
+
+export interface Show {
+  id: string;
+  /** What the dealer calls it. "Riverside Hall B", "Saturday table". */
+  name: string;
+  /** The day it happens, as YYYY-MM-DD. Local calendar, not a timestamp. */
+  date: string;
+  phase: ShowPhase;
+  /**
+   * The groups loaded into the case FOR THIS SHOW.
+   *
+   * This lives on the show rather than on the DB because two shows have two
+   * different cases, and last month's packing list is part of last month's
+   * record. Ids only — every count and total is derived from the cards.
+   */
+  packedStackIds: string[];
+  createdAt: Timestamp;
+  updatedAt?: Timestamp;
+  /** When prep was finished and selling started. */
+  openedAt?: Timestamp;
+  /** When the show was closed out. */
+  closedAt?: Timestamp;
+  /** Tombstone, never a hole — same rule as cards and receipts. */
+  deletedAt?: Timestamp;
 }
 
 /** What a receipt was for. Drives the expense breakdown. */
@@ -201,22 +250,7 @@ export interface DB {
   cards: Card[];
   deals: Deal[];
   receipts: Receipt[];
-  /**
-   * The groups loaded into the case for the current show. Absent means nothing
-   * is packed, which is how every record written before packing existed reads.
-   *
-   * DEVICE-LOCAL BY DESIGN. What is physically in one dealer's case is a fact
-   * about this trip, not a record to reconcile across devices — so this is left
-   * out of the sync push entirely (see lib/sync/changes.ts). A phone and a
-   * laptop can legitimately disagree about it, and neither is wrong.
-   *
-   * Ids only. Counts and values are derived from the cards on every read, the
-   * same as everywhere else in this app, so a packed group cannot go stale
-   * against the cards it contains.
-   */
-  packedStackIds?: string[];
+  shows: Show[];
 }
 
-export const EMPTY_DB: DB = {
-  stacks: [], cards: [], deals: [], receipts: [], packedStackIds: [],
-};
+export const EMPTY_DB: DB = { stacks: [], cards: [], deals: [], receipts: [], shows: [] };

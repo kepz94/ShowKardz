@@ -8,7 +8,7 @@ const card = (id: string, number: string, over: Partial<Card> = {}): Card => ({
   ...over,
 });
 
-const db = (cards: Card[]): DB => ({ stacks: [], cards, deals: [], receipts: [] });
+const db = (cards: Card[]): DB => ({ stacks: [], cards, deals: [], receipts: [], shows: [] });
 
 describe('liveCards', () => {
   it('keeps a card with no tombstone', () => {

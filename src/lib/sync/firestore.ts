@@ -7,6 +7,7 @@
  *   users/{uid}/cards/{cardId}
  *   users/{uid}/deals/{dealId}
  *   users/{uid}/receipts/{receiptId}
+ *   users/{uid}/shows/{showId}
  *
  * Never one document for the inventory. Firestore's hard ceiling is 1 MiB per
  * document, and Scribal crossed it on a single-doc payload — writes 400'd for
@@ -23,7 +24,7 @@ import { firestore } from '../firebase';
 import { EMPTY_DB, type DB } from '../../types';
 import type { DocRef, SyncCollection } from './changes';
 
-const COLLECTIONS: SyncCollection[] = ['stacks', 'cards', 'deals', 'receipts'];
+const COLLECTIONS: SyncCollection[] = ['stacks', 'cards', 'deals', 'receipts', 'shows'];
 
 /** Firestore rejects undefined field values; absent is expressed by omission. */
 function stripUndefined<T extends object>(value: T): T {

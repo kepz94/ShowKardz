@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { mergeDb } from './merge-db';
-import { EMPTY_DB, type Card, type DB, type Deal, type Receipt, type Stack } from '../../types';
+import { EMPTY_DB, type Card, type DB, type Deal, type Receipt, type Show, type Stack } from '../../types';
 
 const T1 = '2026-08-18T10:00:00.000Z';
 const T2 = '2026-08-18T11:00:00.000Z';
@@ -137,25 +137,33 @@ describe('groups across two devices', () => {
   });
 });
 
-describe('what is in the case', () => {
-  it('survives a merge, because a sync must never empty the case', () => {
-    // mergeDb rebuilds the DB object field by field, so a field it forgets is
-    // silently DROPPED — and the damage would land on the morning of a show,
-    // with sync reporting perfect health because nothing failed.
-    const local: DB = { ...EMPTY_DB, packedStackIds: ['s1', 's2'] };
-    expect(mergeDb(local, EMPTY_DB).packedStackIds).toEqual(['s1', 's2']);
+describe('shows', () => {
+  const show = (over: Partial<Show> = {}): Show => ({
+    id: 'sh1', name: 'Riverside', date: '2026-09-05', phase: 'prep',
+    packedStackIds: [], createdAt: T1, ...over,
   });
 
-  it('keeps THIS device\u2019s case, not the other one\u2019s', () => {
-    // What is physically in one dealer's bag is not a shared record. The local
-    // answer wins outright; there is nothing to reconcile.
-    const local: DB = { ...EMPTY_DB, packedStackIds: ['s1'] };
-    const remote: DB = { ...EMPTY_DB, packedStackIds: ['s2', 's3'] };
-    expect(mergeDb(local, remote).packedStackIds).toEqual(['s1']);
+  it('carries a show through a merge at all', () => {
+    const local: DB = { ...EMPTY_DB, shows: [show()] };
+    expect(mergeDb(local, EMPTY_DB).shows).toHaveLength(1);
   });
 
-  it('reads a record written before packing existed as nothing packed', () => {
-    const legacy: DB = { stacks: [], cards: [], deals: [], receipts: [] };
-    expect(mergeDb(legacy, EMPTY_DB).packedStackIds).toEqual([]);
+  it('takes the later edit, so a case packed on the laptop reaches the phone', () => {
+    const older: DB = { ...EMPTY_DB, shows: [show({ packedStackIds: [] })] };
+    const newer: DB = { ...EMPTY_DB, shows: [show({ packedStackIds: ['g1'], updatedAt: T2 })] };
+    expect(mergeDb(older, newer).shows[0]!.packedStackIds).toEqual(['g1']);
+    expect(mergeDb(newer, older).shows[0]!.packedStackIds).toEqual(['g1']);
+  });
+
+  it('adopts a show the other device made', () => {
+    const local: DB = { ...EMPTY_DB, shows: [show()] };
+    const remote: DB = { ...EMPTY_DB, shows: [show({ id: 'sh2', name: 'Other' })] };
+    expect(mergeDb(local, remote).shows.map((s) => s.id).sort()).toEqual(['sh1', 'sh2']);
+  });
+
+  it('does not resurrect a deleted show', () => {
+    const deletedHere: DB = { ...EMPTY_DB, shows: [show({ deletedAt: T2, updatedAt: T2 })] };
+    const aliveThere: DB = { ...EMPTY_DB, shows: [show()] };
+    expect(mergeDb(deletedHere, aliveThere).shows[0]!.deletedAt).toBe(T2);
   });
 });

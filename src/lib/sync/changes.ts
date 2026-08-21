@@ -12,7 +12,7 @@
  */
 import type { DB } from '../../types';
 
-export type SyncCollection = 'stacks' | 'cards' | 'deals' | 'receipts';
+export type SyncCollection = 'stacks' | 'cards' | 'deals' | 'receipts' | 'shows';
 
 export interface DocRef {
   collection: SyncCollection;
@@ -29,7 +29,7 @@ const APPEND_ONLY = ['deals'] as const;
  * that made it while every other device kept the old name — with sync reporting
  * perfect health, because nothing failed.
  */
-const MUTABLE = ['stacks', 'cards', 'receipts'] as const;
+const MUTABLE = ['stacks', 'cards', 'receipts', 'shows'] as const;
 
 /**
  * When a record was last written. `updatedAt` is optional on a group — one never

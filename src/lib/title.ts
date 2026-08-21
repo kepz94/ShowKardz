@@ -74,3 +74,20 @@ export function cardLabel(card: Card, stack: Stack | undefined): string {
   if (title !== '') return title;
   return card.number.trim() === '' ? 'Untitled card' : `Card ${card.number}`;
 }
+
+/**
+ * How a card reads in a LIST ROW, which is a narrower job than a title.
+ *
+ * composeTitle prefixes the group, and a row is not wide enough for both: at
+ * 390px "2023 Panini Prizm Anthony Edwards" needs 313px and gets about 159, so
+ * the row renders "2023 Panini Prizm Anth…" and every card in a group looks
+ * identical. The part that tells them apart is the part that gets cut.
+ *
+ * So a row shows the card's OWN name when it has one — the number is already in
+ * its own chip beside it, and the group is named by the screen you are on — and
+ * falls back to the full title only for a card that has nothing else to show.
+ */
+export function rowLabel(card: Card, stack: Stack | undefined): string {
+  const own = card.name.trim();
+  return own !== '' ? own : cardLabel(card, stack);
+}

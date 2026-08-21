@@ -6,21 +6,27 @@
  * The reducer is pure: ids and timestamps arrive on the action rather than being
  * generated here, so every transition is reproducible in a test.
  */
-import type { Card, DB, Deal, DealLine, ExpenseCategory, Receipt, Stack } from '../types';
+import type { Card, DB, Deal, DealLine, ExpenseCategory, Receipt, Show, Stack } from '../types';
 import { isDuplicate, isValidNumber } from './numbers';
 import { liveCards } from './cards';
 import { splitByWeight, sumAsks } from './money';
 import { cardLabel } from './title';
 import { mergeDb } from './sync/merge-db';
 import { togglePacked } from './packing';
+import { nextPhase } from './shows';
 
 export type Action =
   | { type: 'stack/add'; id: string; name: string; now: string }
   | { type: 'stack/rename'; stackId: string; name: string; now: string }
   /** File a pile of cards into a group at once. groupId null takes them out of one. */
   | { type: 'cards/assign'; cardIds: string[]; stackId: string | null; now: string }
-  /** Put a group in the case for today's show, or take it out. Device-local. */
-  | { type: 'pack/toggle'; stackId: string }
+  | { type: 'show/add'; id: string; name: string; date: string; now: string }
+  | { type: 'show/edit'; showId: string; name?: string; date?: string; now: string }
+  /** Move a show on one phase. Deliberate, never derived — see lib/shows.ts. */
+  | { type: 'show/advance'; showId: string; now: string }
+  /** Put a group in this show's case, or take it out. */
+  | { type: 'show/pack'; showId: string; stackId: string; now: string }
+  | { type: 'show/delete'; showId: string; now: string }
   | { type: 'card/add'; id: string; stackId?: string; number: string; name: string; cardNumber?: string; printed?: string[]; photoId?: string; now: string }
   | { type: 'card/price'; cardId: string; priceCents: number; floorCents?: number; now: string }
   /** stackId: a string assigns a group, null removes one, undefined leaves it. */
@@ -29,7 +35,7 @@ export type Action =
   | { type: 'card/delete'; cardId: string; now: string }
   | { type: 'receipt/add'; id: string; amountCents: number; category: ExpenseCategory; note: string; photoId?: string; now: string }
   | { type: 'receipt/delete'; id: string; now: string }
-  | { type: 'deal/record'; id: string; cardIds: string[]; agreedCents: number; now: string }
+  | { type: 'deal/record'; id: string; cardIds: string[]; agreedCents: number; showId?: string; now: string }
   | { type: 'db/replace'; db: DB }
   /** Records arriving from another device, reconciled by the sync rules. */
   | { type: 'db/merge'; db: DB };
@@ -51,13 +57,74 @@ export function reducer(db: DB, action: Action): DB {
       return { ...db, stacks: [...db.stacks, stack] };
     }
 
-    case 'pack/toggle':
-      /*
-       * What is in the case is a fact about THIS trip on THIS device, so there
-       * is no timestamp and nothing to reconcile — the toggle is idempotent and
-       * order-independent, and lib/sync/changes.ts deliberately never pushes it.
-       */
-      return { ...db, packedStackIds: togglePacked(db.packedStackIds, action.stackId) };
+    case 'show/add': {
+      const name = action.name.trim();
+      if (name === '') return db;
+      const show: Show = {
+        id: action.id, name, date: action.date,
+        // Every show starts the night before. There is nothing to sell at a
+        // show you have not packed.
+        phase: 'prep', packedStackIds: [],
+        createdAt: action.now,
+      };
+      return { ...db, shows: [...(db.shows ?? []), show] };
+    }
+
+    case 'show/edit': {
+      const name = action.name?.trim();
+      // An empty rename would leave the show nameless in a list of shows.
+      if (action.name != null && name === '') return db;
+      return {
+        ...db,
+        shows: (db.shows ?? []).map((s) =>
+          s.id === action.showId
+            ? { ...s, name: name ?? s.name, date: action.date ?? s.date, updatedAt: action.now }
+            : s,
+        ),
+      };
+    }
+
+    case 'show/advance':
+      return {
+        ...db,
+        shows: (db.shows ?? []).map((s) => {
+          if (s.id !== action.showId) return s;
+          const next = nextPhase(s.phase);
+          // A closed show is the record. There is nothing after it.
+          if (next == null) return s;
+          return {
+            ...s,
+            phase: next,
+            openedAt: next === 'live' ? action.now : s.openedAt,
+            closedAt: next === 'done' ? action.now : s.closedAt,
+            updatedAt: action.now,
+          };
+        }),
+      };
+
+    case 'show/pack':
+      return {
+        ...db,
+        shows: (db.shows ?? []).map((s) =>
+          s.id === action.showId
+            ? {
+                ...s,
+                packedStackIds: togglePacked(s.packedStackIds, action.stackId),
+                updatedAt: action.now,
+              }
+            : s,
+        ),
+      };
+
+    case 'show/delete':
+      // A tombstone, matching cards and receipts. Its deals keep their showId
+      // and stay in the Sales totals: the money happened whatever the record says.
+      return {
+        ...db,
+        shows: (db.shows ?? []).map((s) =>
+          s.id === action.showId ? { ...s, deletedAt: action.now, updatedAt: action.now } : s,
+        ),
+      };
 
     case 'stack/rename': {
       const name = action.name.trim();
@@ -221,6 +288,9 @@ export function reducer(db: DB, action: Action): DB {
         lines,
         subtotalCents: sumAsks(asks),
         agreedCents: action.agreedCents,
+        // Absent when the deal was rung up outside a show, on the standalone
+        // calculator. Sales totals everything; a show's own numbers filter here.
+        showId: action.showId,
         createdAt: action.now,
       };
 
