@@ -2,7 +2,7 @@ import { liveCards } from '../lib/cards';
 import { groupRows } from '../lib/groups';
 import { isPacked, packedCards, packedSummary } from '../lib/packing';
 import { liveShows } from '../lib/shows';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Route } from '../App';
 import { useStore, newId, nowIso } from '../lib/store';
 import { findByNumber } from '../lib/numbers';
@@ -29,6 +29,17 @@ export function Show({ go, showId }: { go: (r: Route, id?: string) => void; show
   const [pct, setPct] = useState(85);
   const [charging, setCharging] = useState(false);
   const [done, setDone] = useState<{ agreedCents: number; count: number } | null>(null);
+  /**
+   * A deal dispatched but not yet confirmed to have landed.
+   *
+   * The reducer refuses a deal outright if a card in the cart is already sold —
+   * which happens when the same card was rung up on another device a moment
+   * ago. It refuses by returning the record unchanged, so the only way to know
+   * is to look for the deal afterwards. This screen used to show "Sold, took
+   * $120" either way.
+   */
+  const [awaiting, setAwaiting] = useState<{ id: string; agreedCents: number; count: number } | null>(null);
+  const [refused, setRefused] = useState<string | null>(null);
 
   const sellable = liveCards(db).filter((c) => c.status === 'available');
 
@@ -59,13 +70,46 @@ export function Show({ go, showId }: { go: (r: Route, id?: string) => void; show
   function commit() {
     if (cart.length === 0 || charging) return;
     setCharging(true);
-    dispatch({ type: 'deal/record', id: newId(), cardIds: cart, agreedCents, showId, now: nowIso() });
-    setDone({ agreedCents, count: cart.length });
-    setCart([]);
-    setEntry('');
-    setPct(85);
-    setCharging(false);
+    setRefused(null);
+    const id = newId();
+    dispatch({ type: 'deal/record', id, cardIds: cart, agreedCents, showId, now: nowIso() });
+    // The cart is NOT cleared here. If the deal was refused the dealer needs
+    // what they just typed still on screen to fix it.
+    setAwaiting({ id, agreedCents, count: cart.length });
   }
+
+  /*
+   * Did the deal actually land?
+   *
+   * By the time this runs, `db` is either the new record containing the deal or
+   * — if the reducer refused — the exact same record as before. Both cases
+   * render, because `awaiting` changed, so this always gets its answer.
+   */
+  useEffect(() => {
+    if (awaiting == null) return;
+    const landed = db.deals.some((d) => d.id === awaiting.id);
+    setAwaiting(null);
+    setCharging(false);
+
+    if (landed) {
+      setDone({ agreedCents: awaiting.agreedCents, count: awaiting.count });
+      setCart([]);
+      setEntry('');
+      setPct(85);
+      return;
+    }
+
+    // The only way the reducer refuses is a card that is no longer sellable.
+    // Name the numbers: at a table "something went wrong" is useless.
+    const blocked = db.cards
+      .filter((c) => cart.includes(c.id) && (c.status === 'sold' || c.deletedAt != null))
+      .map((c) => c.number);
+    setRefused(
+      blocked.length > 0
+        ? `${blocked.join(', ')} ${blocked.length === 1 ? 'was' : 'were'} already sold somewhere else. Take ${blocked.length === 1 ? 'it' : 'them'} off the deal and ring it up again.`
+        : 'That deal did not go through. Nothing was recorded — check the numbers and try again.',
+    );
+  }, [db, awaiting, cart]);
 
   if (done) {
     return (
@@ -194,6 +238,15 @@ export function Show({ go, showId }: { go: (r: Route, id?: string) => void; show
               }}>
         Add to deal
       </button>
+
+      {refused && (
+        <div className="flash bad" role="alert">
+          <div>
+            <div className="b">Not recorded</div>
+            <div className="s">{refused}</div>
+          </div>
+        </div>
+      )}
 
       <h2>
         <span>On this deal</span>

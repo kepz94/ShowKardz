@@ -16,7 +16,7 @@
  * book — they get scanned in afterwards, so what is recorded here is what they
  * were credited at, not an invented inventory row.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useStore, newId, nowIso } from '../lib/store';
 import { liveCards } from '../lib/cards';
 import { findByNumber, normalizeNumber } from '../lib/numbers';
@@ -43,6 +43,10 @@ export function Trade({ showId, onDone }: { showId?: string; onDone: () => void 
      the piles are cleared for the next trade, so reading them here would
      report the empty state instead of what just happened. */
   const [done, setDone] = useState<{ delta: number; cardsIn: number } | null>(null);
+  /* Same guard as the cash register: the reducer refuses a deal whose cards are
+     already sold, and refuses by returning the record unchanged. */
+  const [awaiting, setAwaiting] = useState<{ id: string; delta: number; cardsIn: number } | null>(null);
+  const [refused, setRefused] = useState<string | null>(null);
 
   const cards = useMemo(() => liveCards(db), [db]);
   const mineCards = mine
@@ -85,17 +89,41 @@ export function Trade({ showId, onDone }: { showId?: string; onDone: () => void 
   function commit() {
     if (!ready) return;
     setBusy(true);
+    setRefused(null);
+    const id = newId();
     dispatch({
-      type: 'deal/trade', id: newId(), cardIds: mine,
+      type: 'deal/trade', id, cardIds: mine,
       yoursCents: t.yoursCents, yoursPct,
       incoming: theirs, theirsPct,
       cashDeltaCents: t.deltaCents,
       showId, now: nowIso(),
     });
-    setDone({ delta: t.deltaCents, cardsIn: theirs.length });
-    setMine([]); setTheirs([]); setEntry('');
-    setBusy(false);
+    // Both piles stay put until the trade is confirmed to have landed — a
+    // refused trade with the piles already cleared is unrecoverable at a table.
+    setAwaiting({ id, delta: t.deltaCents, cardsIn: theirs.length });
   }
+
+  useEffect(() => {
+    if (awaiting == null) return;
+    const landed = db.deals.some((d) => d.id === awaiting.id);
+    setAwaiting(null);
+    setBusy(false);
+
+    if (landed) {
+      setDone({ delta: awaiting.delta, cardsIn: awaiting.cardsIn });
+      setMine([]); setTheirs([]); setEntry('');
+      return;
+    }
+
+    const blocked = db.cards
+      .filter((c) => mine.includes(c.id) && (c.status === 'sold' || c.deletedAt != null))
+      .map((c) => c.number);
+    setRefused(
+      blocked.length > 0
+        ? `${blocked.join(', ')} ${blocked.length === 1 ? 'is' : 'are'} already gone. Take ${blocked.length === 1 ? 'it' : 'them'} off your side and record the trade again.`
+        : 'That trade did not go through. Nothing was recorded — check your side and try again.',
+    );
+  }, [db, awaiting, mine]);
 
   if (done) {
     return (
@@ -140,6 +168,15 @@ export function Trade({ showId, onDone }: { showId?: string; onDone: () => void 
           <h1>Two piles</h1>
         </div>
       </header>
+
+      {refused && (
+        <div className="flash bad" role="alert">
+          <div>
+            <div className="b">Not recorded</div>
+            <div className="s">{refused}</div>
+          </div>
+        </div>
+      )}
 
       {/* ---- your side ---- */}
       <h2><span>Yours, going out</span><span className="count">{mineCards.length}</span></h2>

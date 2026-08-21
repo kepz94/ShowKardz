@@ -16,7 +16,7 @@ import {
 } from 'react';
 import { EMPTY_DB, type DB } from '../types';
 import { reducer, type Action } from './reducer';
-import { changedDocs } from './sync/changes';
+import { changedDocs, withPushed, type SyncCollection } from './sync/changes';
 // Type-only: erased at compile time, so it pulls no Firebase code into this chunk.
 import type { User } from './firebase';
 
@@ -81,13 +81,34 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [syncError, setSyncError] = useState<string | null>(null);
 
   /**
-   * The last state that is known to match the server. Comparing against it is
-   * what decides the push set — and it is advanced WITHOUT pushing when a
-   * change arrived from the server, so an inbound merge cannot echo straight
-   * back out as an outbound write.
+   * WHAT THE SERVER ACTUALLY HAS — built from the listener's own snapshots,
+   * never from local state.
+   *
+   * The previous version tracked "the last state we believe is synced" and
+   * seeded it from whatever was already on the device at launch. Two things
+   * fell through that:
+   *
+   *   1. Signing in AFTER building a collection uploaded nothing. At the moment
+   *      of sign-in the marker equalled the local record, so the comparison
+   *      found no difference and every existing card stayed on one phone
+   *      forever, while the bar said "Syncing".
+   *   2. A local edit that landed in the same render as an incoming snapshot
+   *      was treated as having come from the server, marked as already sent,
+   *      and never pushed — with nothing failing.
+   *
+   * Comparing against the server's own answer removes both: a record the
+   * server has never described is unsent, whatever else happened.
    */
-  const synced = useRef<DB>(db);
-  const applyingRemote = useRef(false);
+  const serverHas = useRef<DB>(EMPTY_DB);
+  /**
+   * Collections the listener has actually reported on.
+   *
+   * Pushing before the first snapshot would send the whole book on every launch
+   * — the server's copy is only "empty" because nothing has described it yet.
+   * A snapshot arrives immediately from Firestore's local cache, offline
+   * included, so this fills within a moment of signing in.
+   */
+  const described = useRef<Set<SyncCollection>>(new Set());
 
   useEffect(() => {
     // Don't write back the record we just read.
@@ -141,52 +162,59 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   // Pull: remote collections merge in under the rules in merge-db.ts.
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      // A different account may sign in next, and nothing of this one's is on
+      // its server. Forget what we knew rather than assume it carries over.
+      serverHas.current = EMPTY_DB;
+      described.current = new Set();
+      return;
+    }
     setSyncError(null);
 
     let off: (() => void) | undefined;
     let cancelled = false;
-    void import('./sync/firestore').then(({ watchRecords }) => {
-      if (cancelled) return;
-      off = watchRecords(user.uid, (partial) => {
-        applyingRemote.current = true;
-        dispatch({ type: 'db/merge', db: partial });
-      });
-    });
+    void import('./sync/firestore')
+      .then(({ watchRecords }) => {
+        if (cancelled) return;
+        off = watchRecords(
+          user.uid,
+          (name, partial) => {
+            serverHas.current = { ...serverHas.current, [name]: partial[name] };
+            described.current = new Set(described.current).add(name);
+            dispatch({ type: 'db/merge', db: partial });
+          },
+          // A listener that is being denied is a sync failure like any other.
+          (message) => setSyncError(message),
+        );
+      })
+      .catch(() => setSyncError('Could not start syncing'));
     return () => {
       cancelled = true;
       off?.();
     };
   }, [user]);
 
-  // Push: whatever changed since the last known-server state.
+  // Push: everything the server has not described, including records that
+  // existed on this device long before anyone signed in.
   useEffect(() => {
-    const wasRemote = applyingRemote.current;
-    applyingRemote.current = false;
+    if (!user) return;
 
-    if (!user) {
-      synced.current = db;
-      return;
-    }
-    if (wasRemote) {
-      // Arrived from the server; it is already there.
-      synced.current = db;
-      return;
-    }
-
-    const refs = changedDocs(synced.current, db);
+    const refs = changedDocs(serverHas.current, db)
+      // Only collections the listener has reported on. Before that, "the server
+      // does not have it" is an assumption rather than an answer.
+      .filter((ref) => described.current.has(ref.collection));
     if (refs.length === 0) return;
 
     const pushing = db;
     void import('./sync/firestore')
       .then(({ pushDocs }) => pushDocs(user.uid, pushing, refs))
       .then(() => {
-        synced.current = pushing;
+        serverHas.current = withPushed(serverHas.current, pushing, refs);
         setSyncError(null);
       })
       .catch((error: unknown) => {
-        // Leave synced.current alone so the same records retry on the next
-        // change, and say so out loud rather than failing quietly.
+        // serverHas is left alone, so these records are still unsent and the
+        // next change retries them. Say so out loud rather than failing quietly.
         setSyncError(error instanceof Error ? error.message : 'Sync failed');
       });
   }, [db, user]);

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore, newId, nowIso } from '../lib/store';
 import { isDuplicate, isValidNumber, normalizeNumber } from '../lib/numbers';
 import { liveCards } from '../lib/cards';
@@ -136,6 +136,15 @@ export function Scan({ go }: { go: (r: Route) => void }) {
   const [readError, setReadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [justAdded, setJustAdded] = useState<{ number: string; label: string } | null>(null);
+  /**
+   * A card dispatched but not yet confirmed to be in the book.
+   *
+   * `dup` below blocks the button, but it is computed from what this device
+   * knows. If the same sticker number lands from another device in between, the
+   * reducer refuses the card — by returning the record unchanged — and this
+   * screen used to clear the form and say the card went in.
+   */
+  const [awaiting, setAwaiting] = useState<{ id: string; number: string; label: string } | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
 
   const numberField = useRef<HTMLInputElement>(null);
@@ -295,13 +304,32 @@ export function Scan({ go }: { go: (r: Route) => void }) {
       });
     }
 
-    setJustAdded({
+    // The form is NOT cleared here, and nothing claims success yet: whether the
+    // card is actually in the book is decided by looking for it.
+    setAwaiting({
+      id,
       number: clean,
       label: name.trim() !== '' ? name.trim() : 'Unnamed',
     });
-    clearForm();
-    setBusy(false);
   }
+
+  /* Did the card land? On a refusal `db` is the same record as before, and the
+     render happens anyway because `awaiting` changed. */
+  useEffect(() => {
+    if (awaiting == null) return;
+    const landed = db.cards.some((c) => c.id === awaiting.id);
+    setAwaiting(null);
+    setBusy(false);
+
+    if (landed) {
+      setJustAdded({ number: awaiting.number, label: awaiting.label });
+      clearForm();
+      return;
+    }
+    setError(
+      `Sticker ${awaiting.number} was taken by another device just now, so this card was not filed. Give it a different number.`,
+    );
+  }, [db, awaiting]);
 
   const pending = number !== '' || name !== '' || price !== '' || floor !== '' || photo !== null;
 

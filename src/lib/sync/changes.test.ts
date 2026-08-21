@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { changedDocs } from './changes';
+import { changedDocs, withPushed } from './changes';
 import { EMPTY_DB, type Card, type DB, type Receipt, type Stack } from '../../types';
 
 const T1 = '2026-08-18T10:00:00.000Z';
@@ -97,5 +97,64 @@ describe('a renamed group', () => {
   it('pushes nothing when a group did not change', () => {
     const prev: DB = { ...EMPTY_DB, stacks: [stack()] };
     expect(changedDocs(prev, { ...EMPTY_DB, stacks: [stack()] })).toEqual([]);
+  });
+});
+
+describe('withPushed', () => {
+  it('stops a pushed record from being pushed again', () => {
+    const next = db({ cards: [card('a')] });
+    const refs = changedDocs(EMPTY_DB, next);
+    expect(refs).toEqual([{ collection: 'cards', id: 'a' }]);
+
+    const known = withPushed(EMPTY_DB, next, refs);
+    expect(changedDocs(known, next)).toEqual([]);
+  });
+
+  it('leaves everything else on the server alone', () => {
+    const known = db({ cards: [card('a')] });
+    const next = db({ cards: [card('a')], receipts: [receipt('r1')] });
+
+    const after = withPushed(known, next, [{ collection: 'receipts', id: 'r1' }]);
+    expect(after.cards).toHaveLength(1);
+    expect(after.receipts).toHaveLength(1);
+  });
+
+  it('replaces rather than duplicates when a record is pushed twice', () => {
+    const known = withPushed(EMPTY_DB, db({ cards: [card('a')] }),
+      [{ collection: 'cards', id: 'a' }]);
+
+    const edited = db({ cards: [card('a', { number: '456', updatedAt: T2 })] });
+    const refs = changedDocs(known, edited);
+    expect(refs).toEqual([{ collection: 'cards', id: 'a' }]);
+
+    const after = withPushed(known, edited, refs);
+    expect(after.cards).toHaveLength(1);
+    expect(after.cards[0]!.number).toBe('456');
+  });
+});
+
+/*
+ * The bug the whole "compare against the server" model exists to kill.
+ *
+ * The push set used to be measured against the last state believed to be
+ * synced, seeded from whatever was on the device at launch. At the moment of
+ * sign-in those were the same object, so an existing collection had nothing to
+ * push and stayed on one phone forever while the bar said "Syncing".
+ */
+describe('a collection built before signing in', () => {
+  it('is entirely unsent as far as the server is concerned', () => {
+    const local = db({
+      stacks: [{ id: 'g1', name: 'Prizm', createdAt: T1 } as Stack],
+      cards: [card('a')],
+    });
+
+    // The old model, asserted so that returning to it fails here.
+    expect(changedDocs(local, local)).toEqual([]);
+
+    // The new one: the server has described nothing, so all of it goes up.
+    expect(changedDocs(EMPTY_DB, local)).toEqual([
+      { collection: 'stacks', id: 'g1' },
+      { collection: 'cards', id: 'a' },
+    ]);
   });
 });

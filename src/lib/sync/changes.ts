@@ -37,6 +37,27 @@ const MUTABLE = ['stacks', 'cards', 'receipts', 'shows'] as const;
  */
 const stampOf = (r: { createdAt: string; updatedAt?: string }): string => r.updatedAt ?? r.createdAt;
 
+/**
+ * The server's copy, updated with records we just successfully pushed.
+ *
+ * Without this a successful push would be forgotten the moment the effect ran
+ * again, and the same records would be re-sent on every subsequent change. The
+ * listener does eventually echo a write back, but "eventually" is not a thing
+ * to build a push set on.
+ */
+export function withPushed(known: DB, source: DB, refs: DocRef[]): DB {
+  const next: DB = { ...known };
+  for (const ref of refs) {
+    const record = (source[ref.collection] as { id: string }[]).find((r) => r.id === ref.id);
+    if (!record) continue;
+    const without = (next[ref.collection] as { id: string }[]).filter((r) => r.id !== ref.id);
+    // The cast is contained here: DocRef.collection is a union, so TypeScript
+    // cannot see that the record and the list it goes into are the same type.
+    (next[ref.collection] as unknown[]) = [...without, record];
+  }
+  return next;
+}
+
 export function changedDocs(prev: DB, next: DB): DocRef[] {
   const out: DocRef[] = [];
 
